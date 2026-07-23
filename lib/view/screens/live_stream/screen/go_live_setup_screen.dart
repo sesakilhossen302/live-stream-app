@@ -20,6 +20,7 @@ class _GoLiveSetupScreenState extends State<GoLiveSetupScreen> {
   final _titleController = TextEditingController();
   final _descController = TextEditingController();
   final _startingBidController = TextEditingController(text: "100");
+  final _bidIncrementController = TextEditingController(text: "5");
   int _timerDuration = 60;
 
   List<Map<String, dynamic>> _myProducts = [];
@@ -81,6 +82,7 @@ class _GoLiveSetupScreenState extends State<GoLiveSetupScreen> {
       description: _descController.text.trim(),
       productId: _selectedProduct?['_id']?.toString() ?? "",
       startingBid: double.tryParse(_startingBidController.text) ?? 100,
+      bidIncrement: double.tryParse(_bidIncrementController.text) ?? 5,
       timerDuration: _timerDuration,
       productTitle: pTitle,
       productImage: pImage,
@@ -270,7 +272,7 @@ class _GoLiveSetupScreenState extends State<GoLiveSetupScreen> {
 
               SizedBox(height: 24.h),
 
-              // Starting Bid
+              // Starting Bid & Bid Increment
               Row(
                 children: [
                   Expanded(
@@ -288,28 +290,40 @@ class _GoLiveSetupScreenState extends State<GoLiveSetupScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _sectionLabel("Bid Timer"),
+                        _sectionLabel("Bid Increment (\$)"),
                         SizedBox(height: 10.h),
-                        Container(
-                          padding: EdgeInsets.symmetric(horizontal: 16.w),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF161622),
-                            borderRadius: BorderRadius.circular(14.r),
-                            border: Border.all(color: Colors.white10),
-                          ),
-                          child: DropdownButton<int>(
-                            value: _timerDuration,
-                            dropdownColor: const Color(0xFF161622),
-                            underline: const SizedBox.shrink(),
-                            isExpanded: true,
-                            style: TextStyle(color: Colors.white, fontSize: 14.sp, fontWeight: FontWeight.w700),
-                            items: [30, 60, 120, 180, 300].map((val) {
-                              return DropdownMenuItem(value: val, child: Text("${val}s"));
-                            }).toList(),
-                            onChanged: (val) => setState(() => _timerDuration = val ?? 60),
-                          ),
-                        ),
+                        _inputField(_bidIncrementController, "5", keyboardType: TextInputType.number),
                       ],
+                    ),
+                  ),
+                ],
+              ),
+
+              SizedBox(height: 16.h),
+
+              // Bid Timer
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _sectionLabel("Bid Timer"),
+                  SizedBox(height: 10.h),
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: 16.w),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF161622),
+                      borderRadius: BorderRadius.circular(14.r),
+                      border: Border.all(color: Colors.white10),
+                    ),
+                    child: DropdownButton<int>(
+                      value: _timerDuration,
+                      dropdownColor: const Color(0xFF161622),
+                      underline: const SizedBox.shrink(),
+                      isExpanded: true,
+                      style: TextStyle(color: Colors.white, fontSize: 14.sp, fontWeight: FontWeight.w700),
+                      items: [30, 60, 120, 180, 300].map((val) {
+                        return DropdownMenuItem(value: val, child: Text("${val}s"));
+                      }).toList(),
+                      onChanged: (val) => setState(() => _timerDuration = val ?? 60),
                     ),
                   ),
                 ],
@@ -393,6 +407,7 @@ class _GoLiveSetupScreenState extends State<GoLiveSetupScreen> {
     _titleController.dispose();
     _descController.dispose();
     _startingBidController.dispose();
+    _bidIncrementController.dispose();
     super.dispose();
   }
 }

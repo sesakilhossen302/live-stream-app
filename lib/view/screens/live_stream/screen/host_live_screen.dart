@@ -26,6 +26,9 @@ class _HostLiveScreenState extends State<HostLiveScreen> {
   void initState() {
     super.initState();
     ctrl = Get.find<AgoraLiveController>();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ctrl.ensureHostCameraActive();
+    });
   }
 
   @override
@@ -39,7 +42,7 @@ class _HostLiveScreenState extends State<HostLiveScreen> {
   Widget build(BuildContext context) {
     return WillPopScope(
       onWillPop: () async {
-        _showEndStreamDialog(ctrl);
+        ctrl.minimizeStream();
         return false;
       },
       child: Scaffold(
@@ -164,6 +167,19 @@ class _HostLiveScreenState extends State<HostLiveScreen> {
                         )),
                       ),
                       const Spacer(),
+                      // Minimize button
+                      GestureDetector(
+                        onTap: () => ctrl.minimizeStream(),
+                        child: Container(
+                          padding: EdgeInsets.all(7.r),
+                          decoration: const BoxDecoration(
+                            color: Colors.white24,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(Icons.fullscreen_exit, color: Colors.white, size: 16.sp),
+                        ),
+                      ),
+                      SizedBox(width: 8.w),
                       // End button
                       GestureDetector(
                         onTap: () => _showEndStreamDialog(ctrl),
@@ -523,7 +539,7 @@ class _HostLiveScreenState extends State<HostLiveScreen> {
     final loadingProducts = true.obs;
     
     // Fetch products
-    final sellerId = SharePrefsHelper.getString(SharePrefsHelper.userIdKey) ?? "";
+    final sellerId = SharePrefsHelper.getString(SharePrefsHelper.userIdKey);
     Get.find<ApiClient>().getData("${ApiUrl.products}?sellerId=$sellerId").then((res) {
       loadingProducts.value = false;
       if (res.statusCode == 200) {
@@ -538,6 +554,7 @@ class _HostLiveScreenState extends State<HostLiveScreen> {
     });
 
     final startingBidCtrl = TextEditingController(text: "100");
+    final incrementCtrl = TextEditingController(text: "5");
     final durationCtrl = TextEditingController(text: "60");
 
     Get.bottomSheet(
@@ -563,7 +580,7 @@ class _HostLiveScreenState extends State<HostLiveScreen> {
             Text("Start New Auction", style: TextStyle(color: Colors.white, fontSize: 20.sp, fontWeight: FontWeight.w900)),
             SizedBox(height: 16.h),
             
-            // Starting Bid & Duration Row
+            // Starting Bid, Increment & Duration Row
             Row(
               children: [
                 Expanded(
@@ -576,17 +593,38 @@ class _HostLiveScreenState extends State<HostLiveScreen> {
                     child: TextField(
                       controller: startingBidCtrl,
                       keyboardType: TextInputType.number,
-                      style: TextStyle(color: Colors.white, fontSize: 14.sp, fontWeight: FontWeight.w800),
+                      style: TextStyle(color: Colors.white, fontSize: 13.sp, fontWeight: FontWeight.w800),
                       decoration: InputDecoration(
-                        labelText: "Starting Bid (\$)",
+                        labelText: "Start Bid (\$)",
                         labelStyle: const TextStyle(color: Colors.white38),
                         border: InputBorder.none,
-                        contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+                        contentPadding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 12.h),
                       ),
                     ),
                   ),
                 ),
-                SizedBox(width: 12.w),
+                SizedBox(width: 8.w),
+                Expanded(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF161622),
+                      borderRadius: BorderRadius.circular(14.r),
+                      border: Border.all(color: Colors.white10),
+                    ),
+                    child: TextField(
+                      controller: incrementCtrl,
+                      keyboardType: TextInputType.number,
+                      style: TextStyle(color: Colors.white, fontSize: 13.sp, fontWeight: FontWeight.w800),
+                      decoration: InputDecoration(
+                        labelText: "Increment (\$)",
+                        labelStyle: const TextStyle(color: Colors.white38),
+                        border: InputBorder.none,
+                        contentPadding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 12.h),
+                      ),
+                    ),
+                  ),
+                ),
+                SizedBox(width: 8.w),
                 Expanded(
                   child: Container(
                     decoration: BoxDecoration(
@@ -597,12 +635,12 @@ class _HostLiveScreenState extends State<HostLiveScreen> {
                     child: TextField(
                       controller: durationCtrl,
                       keyboardType: TextInputType.number,
-                      style: TextStyle(color: Colors.white, fontSize: 14.sp, fontWeight: FontWeight.w800),
+                      style: TextStyle(color: Colors.white, fontSize: 13.sp, fontWeight: FontWeight.w800),
                       decoration: InputDecoration(
-                        labelText: "Duration (sec)",
+                        labelText: "Timer (sec)",
                         labelStyle: const TextStyle(color: Colors.white38),
                         border: InputBorder.none,
-                        contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+                        contentPadding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 12.h),
                       ),
                     ),
                   ),
@@ -638,12 +676,14 @@ class _HostLiveScreenState extends State<HostLiveScreen> {
                     return GestureDetector(
                       onTap: () async {
                         final double startingBid = double.tryParse(startingBidCtrl.text) ?? 100.0;
+                        final double bidIncrement = double.tryParse(incrementCtrl.text) ?? 5.0;
                         final int duration = int.tryParse(durationCtrl.text) ?? 60;
                         
                         Get.back(); // Close bottom sheet
                         final ok = await ctrl.resetAndStartNewAuction(
                           productId: pid,
                           startingBid: startingBid,
+                          bidIncrement: bidIncrement,
                           timerDuration: duration,
                           productTitle: title,
                           productImage: image,
@@ -1223,18 +1263,23 @@ class _HostLiveScreenState extends State<HostLiveScreen> {
               Row(
                 children: [
                   Expanded(
-                    child: TextButton(
-                      onPressed: () => Get.back(),
-                      style: TextButton.styleFrom(
-                        padding: EdgeInsets.symmetric(vertical: 14.h),
+                    child: OutlinedButton(
+                      onPressed: () {
+                        Get.back();
+                        ctrl.minimizeStream();
+                      },
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Color(0xFF8B9BFF)),
+                        padding: EdgeInsets.symmetric(vertical: 12.h),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14.r)),
                       ),
                       child: Text(
-                        "Continue",
-                        style: TextStyle(color: Colors.white54, fontSize: 13.sp, fontWeight: FontWeight.w700),
+                        "Minimize",
+                        style: TextStyle(color: const Color(0xFF8B9BFF), fontSize: 12.sp, fontWeight: FontWeight.w700),
                       ),
                     ),
                   ),
-                  SizedBox(width: 12.w),
+                  SizedBox(width: 8.w),
                   Expanded(
                     child: ElevatedButton(
                       onPressed: () async {
@@ -1243,12 +1288,12 @@ class _HostLiveScreenState extends State<HostLiveScreen> {
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.red,
-                        padding: EdgeInsets.symmetric(vertical: 14.h),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
+                        padding: EdgeInsets.symmetric(vertical: 12.h),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14.r)),
                       ),
                       child: Text(
                         "End & Exit",
-                        style: TextStyle(color: Colors.white, fontSize: 13.sp, fontWeight: FontWeight.w900),
+                        style: TextStyle(color: Colors.white, fontSize: 12.sp, fontWeight: FontWeight.w900),
                       ),
                     ),
                   ),

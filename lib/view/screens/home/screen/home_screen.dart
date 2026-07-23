@@ -11,6 +11,7 @@ import '../../purchases/screen/purchases_screen.dart';
 import '../controller/home_controller.dart';
 import 'home_live_preview_widget.dart';
 import '../../../../data/services/api_url.dart';
+import '../../live_stream/controller/agora_live_controller.dart';
 class HomeScreen extends GetView<HomeController> {
   const HomeScreen({super.key});
 
@@ -98,7 +99,18 @@ class HomeScreen extends GetView<HomeController> {
 
               // Go Live Button
               GestureDetector(
-                onTap: () => Get.toNamed(AppRoute.goLiveSetup),
+                onTap: () {
+                  try {
+                    if (Get.isRegistered<AgoraLiveController>()) {
+                      final ctrl = Get.find<AgoraLiveController>();
+                      if (ctrl.isLive.value) {
+                        ctrl.resumeStream();
+                        return;
+                      }
+                    }
+                  } catch (_) {}
+                  Get.toNamed(AppRoute.goLiveSetup);
+                },
                 child: Container(
                   width: double.infinity,
                   height: 67.h,
@@ -317,43 +329,65 @@ class HomeScreen extends GetView<HomeController> {
                                 ),
                                 SizedBox(height: 24.h),
                                 SizedBox(
-                                  width: double.infinity,
-                                  height: 60.h,
-                                  child: ElevatedButton(
-                                    onPressed: () {
-                                      if (liveShow.raw != null) {
-                                        Get.toNamed(AppRoute.viewerLive, arguments: liveShow.raw);
-                                      }
-                                    },
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: const Color(0xFF8B9BFF),
-                                      foregroundColor: const Color(0xFF0F0B1E),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(30.r),
-                                      ),
-                                      elevation: 0,
-                                    ),
-                                    child: Row(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        Icon(
-                                          Icons.play_circle_fill_rounded,
-                                          size: 28.sp,
-                                          color: const Color(0xFF0F0B1E),
-                                        ),
-                                        SizedBox(width: 10.w),
-                                        Text(
-                                          "Join Stream",
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.w900,
-                                            fontSize: 18.sp,
-                                            color: const Color(0xFF0F0B1E),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
+                                   width: double.infinity,
+                                   height: 60.h,
+                                   child: Obx(() {
+                                     AgoraLiveController? agoraCtrl;
+                                     try {
+                                       if (Get.isRegistered<AgoraLiveController>()) {
+                                         agoraCtrl = Get.find<AgoraLiveController>();
+                                       }
+                                     } catch (_) {}
+
+                                     final String sId = liveShow.raw?['_id']?.toString() ?? '';
+                                     final bool isLiveActive = agoraCtrl != null && agoraCtrl.isLive.value && (agoraCtrl.streamId.value == sId || sId.isEmpty || (agoraCtrl.isHost.value && agoraCtrl.isLive.value));
+                                     final bool isHost = agoraCtrl?.isHost.value ?? false;
+
+                                     String btnText = "Join Stream";
+                                     IconData btnIcon = Icons.play_circle_fill_rounded;
+                                     if (isLiveActive) {
+                                       btnText = isHost ? "Return to My Stream" : "Return to Stream";
+                                       btnIcon = isHost ? Icons.videocam_rounded : Icons.play_circle_fill_rounded;
+                                     }
+
+                                     return ElevatedButton(
+                                       onPressed: () {
+                                         if (isLiveActive && agoraCtrl != null) {
+                                           agoraCtrl.resumeStream();
+                                         } else if (liveShow.raw != null) {
+                                           Get.toNamed(AppRoute.viewerLive, arguments: liveShow.raw);
+                                         }
+                                       },
+                                       style: ElevatedButton.styleFrom(
+                                         backgroundColor: isLiveActive ? const Color(0xFFFF4B4B) : const Color(0xFF8B9BFF),
+                                         foregroundColor: isLiveActive ? Colors.white : const Color(0xFF0F0B1E),
+                                         shape: RoundedRectangleBorder(
+                                           borderRadius: BorderRadius.circular(30.r),
+                                         ),
+                                         elevation: 0,
+                                       ),
+                                       child: Row(
+                                         mainAxisAlignment: MainAxisAlignment.center,
+                                         children: [
+                                           Icon(
+                                             btnIcon,
+                                             size: 28.sp,
+                                             color: isLiveActive ? Colors.white : const Color(0xFF0F0B1E),
+                                           ),
+                                           SizedBox(width: 10.w),
+                                           Text(
+                                             btnText,
+                                             style: TextStyle(
+                                               fontWeight: FontWeight.w900,
+                                               fontSize: 18.sp,
+                                               color: isLiveActive ? Colors.white : const Color(0xFF0F0B1E),
+                                             ),
+                                           ),
+                                         ],
+                                       ),
+                                     );
+                                   }),
+                                 ),
                               ],
                             ),
                           ),
@@ -539,6 +573,16 @@ class HomeScreen extends GetView<HomeController> {
   Widget _buildLiveCard(LiveItemModel item, int index) {
     return GestureDetector(
       onTap: () {
+        try {
+          if (Get.isRegistered<AgoraLiveController>()) {
+            final ctrl = Get.find<AgoraLiveController>();
+            final String sId = item.raw?['_id']?.toString() ?? '';
+            if (ctrl.isLive.value && (ctrl.streamId.value == sId || (ctrl.isHost.value && ctrl.isLive.value))) {
+              ctrl.resumeStream();
+              return;
+            }
+          }
+        } catch (_) {}
         if (item.raw != null) {
           Get.toNamed(AppRoute.viewerLive, arguments: item.raw);
         } else {

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../../../global/widgets/custom_bottom_navbar.dart';
+import '../../../../global/widgets/floating_live_stream_overlay.dart';
 import '../controller/main_controller.dart';
 
 class MainScreen extends GetView<MainController> {
@@ -20,6 +21,7 @@ class MainScreen extends GetView<MainController> {
             right: 0,
             child: CustomBottomNavbar(),
           ),
+          const FloatingLiveStreamOverlay(),
         ],
       ),
     );

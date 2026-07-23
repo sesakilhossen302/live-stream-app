@@ -1,0 +1,66 @@
+সবচেয়ে গুরুত্বপূর্ণ কথা (Bug Fix)
+আগে Buyer streamId কে auctionItemId হিসেবে ব্যবহার করছিল — এটাই বিড reject হওয়ার কারণ ছিল।
+সমাধান: Server এখন একটি নতুন Socket event "auction-item-started" broadcast করে যেখানে সঠিক auctionItemId থাকে। Buyer সেটা listen করে সেভ রাখবে এবং bid-এ ব্যবহার করবে।
+👨‍💼 Seller Flow
+Step 1 — Agora Token নাও
+GET /api/v1/auctions/token?channelName=my_channel&uid=0&role=publisherHeaders: Authorization: Bearer <SELLER_TOKEN>
+Step 2 — Live Stream তৈরি করো
+POST /api/v1/auctions/streamHeaders: Authorization: Bearer <SELLER_TOKEN>Body:{  "title": "Vintage Card Auction!",  "agoraChannelName": "my_channel"}Response → data._id = STREAM_ID  (এটা save করো)
+Step 3 — Stream Live করো
+PATCH /api/v1/auctions/stream/<STREAM_ID>/statusBody: { "status": "live" }
+Step 4 — Socket join করো
+dartsocket.emit("join-stream", { "streamId": STREAM_ID, "userId": SELLER_ID });
+Step 5 — Auction Item তৈরি করো
+POST /api/v1/auctions/itemHeaders: Authorization: Bearer <SELLER_TOKEN>Body:{  "streamId": "STREAM_ID",  "productId": "PRODUCT_ID",  "startingBid": 50,  "bidIncrement": 5,  "timerDuration": 120}
+✅ Server এখন automatically সব Viewer-কে "auction-item-started" event পাঠাবে।
+Step 6 — Auction শেষ করো
+POST /api/v1/auctions/item/<AUCTION_ITEM_ID>/completeHeaders: Authorization: Bearer <SELLER_TOKEN>
+Server winner-কে "auction-won" socket event পাঠাবে।
+Step 7 — Stream শেষ করো
+dartsocket.emit("end-stream", { "streamId": STREAM_ID, "sellerId": SELLER_ID });
+👤 Buyer/Viewer Flow
+Step 1 — Socket join করো
+dartsocket.emit("join-stream", { "streamId": STREAM_ID, "userId": BUYER_ID });
+Step 2 — "auction-item-started" Listen করো (⚠️ Most Important)
+dartsocket.on("auction-item-started", (data) {  // এই event-এ সঠিক auctionItemId আসে — extra API call লাগবে না  String auctionItemId = data["auctionItemId"];  // ← এটা save করো  double currentBid    = data["currentBid"];  String endsAt        = data["endsAt"];  var product          = data["product"];  showAuctionCard(auctionItemId, currentBid, endsAt, product);});
+Event data:
+json{  "auctionItemId": "6a61e7ac...",  "streamId": "6a5abc8a...",  "currentBid": 50.0,  "bidIncrement": 5.0,  "endsAt": "2026-07-23T16:17:00.000Z",  "product": {    "_id": "...",    "title": "Charizard 1st Edition"  }}
+Step 3 — Bid করো
+POST /api/v1/auctions/bidHeaders: Authorization: Bearer <BUYER_TOKEN>Body:{  "auctionItemId": "6a61e7ac...",   ← Step 2 থেকে পাওয়া ID (streamId না!)  "bidAmount": 75                   ← currentBid-এর চেয়ে বেশি হতে হবে}
+Success (200):
+json{ "message": "Bid placed successfully.", "data": { "currentBid": 75 } }
+Error (409):
+json{ "message": "Bid rejected: Someone placed a higher or equal bid first." }
+এই error মানে: bidAmount <= currentBid অথবা ভুল auctionItemId
+Step 4 — Real-time Bid Update Listen করো
+dartsocket.on("new-bid", (data) {  double newBid    = data["currentBid"];  var bidder       = data["highestBidder"];  String endsAt    = data["endsAt"];  updateBidUI(newBid, bidder, endsAt);});
+Step 5 — Winning Notification
+dartsocket.on("auction-won", (data) {  String checkoutUrl  = data["checkoutUrl"];  String productTitle = data["productTitle"];  showWinDialog(productTitle, data["winningBid"], checkoutUrl);  // checkoutUrl এ redirect করো payment-এর জন্য});
+📋 Socket Events Summary
+Event	Direction	কখন
+join-stream	Client → Server	Stream join করলে
+leave-stream	Client → Server	Stream ছাড়লে
+auction-item-started	Server → All	Seller auction item create করলে ✅ NEW
+place-bid	Client → Server	Socket দিয়ে bid
+new-bid	Server → All	কেউ সফলভাবে bid করলে
+bid-error	Server → Sender	Bid reject হলে
+auction-won	Server → Winner	Auction complete হলে
+auction-payment-received	Server → Seller	Payment সম্পন্ন হলে
+viewer-count-update	Server → All	Viewer count বদলালে
+stream-ended	Server → All	Stream শেষ হলে
+🛑 সাধারণ ভুল যা করবে না
+❌ ভুল	✅ সঠিক
+auctionItemId হিসেবে streamId পাঠানো	"auction-item-started" event-এর auctionItemId ব্যবহার করো
+Bid করার আগে complete করা	অন্তত একটা bid হতে দাও
+bidAmount == currentBid পাঠানো	bidAmount অবশ্যই currentBid-এর চেয়ে বেশি হবে
+🔗 সব API Endpoints
+ 
+Method	Endpoint	Who	কাজ
+GET	/api/v1/auctions/token	All	Agora token
+POST	/api/v1/auctions/stream	Seller	Stream তৈরি
+GET	/api/v1/auctions/streams?status=live	All	Live streams দেখো
+PATCH	/api/v1/auctions/stream/:id/status	Seller	Stream status আপডেট
+POST	/api/v1/auctions/item	Seller	Auction item তৈরি
+GET	/api/v1/auctions/stream/:streamId/items	All	Stream-এর auction items দেখো
+POST	/api/v1/auctions/bid	Buyer	Bid করো
+POST	/api/v1/auctions/item/:id/complete	Seller	Auction শেষ করো

@@ -28,6 +28,15 @@ class _ViewerLiveScreenState extends State<ViewerLiveScreen> {
     super.initState();
     ctrl = Get.put(AgoraLiveController(), permanent: true);
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      final currentUserId = SharePrefsHelper.getString(SharePrefsHelper.userIdKey);
+      final seller = widget.streamData['sellerId'] ?? widget.streamData['seller'] ?? widget.streamData['hostId'] ?? widget.streamData['user'] ?? widget.streamData['host'];
+      final sId = (seller is Map) ? (seller['_id'] ?? seller['id'] ?? '') : (seller?.toString() ?? '');
+
+      if ((ctrl.isLive.value && ctrl.isHost.value) || (sId.isNotEmpty && currentUserId.isNotEmpty && sId == currentUserId)) {
+        ctrl.isHost.value = true;
+        Get.offNamed(AppRoute.hostLive);
+        return;
+      }
       ctrl.joinAsViewer(widget.streamData);
     });
   }
@@ -43,7 +52,7 @@ class _ViewerLiveScreenState extends State<ViewerLiveScreen> {
   Widget build(BuildContext context) {
     return WillPopScope(
       onWillPop: () async {
-        await ctrl.endStream();
+        ctrl.minimizeStream();
         return false;
       },
       child: Scaffold(
@@ -121,16 +130,27 @@ class _ViewerLiveScreenState extends State<ViewerLiveScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          // Close button
-                          GestureDetector(
-                            onTap: () async {
-                              await ctrl.endStream();
-                            },
-                            child: Container(
-                              padding: EdgeInsets.all(8.r),
-                              decoration: const BoxDecoration(color: Colors.black38, shape: BoxShape.circle),
-                              child: Icon(Icons.close_rounded, color: Colors.white, size: 22.sp),
-                            ),
+                          // Close & Minimize buttons
+                          Row(
+                            children: [
+                              GestureDetector(
+                                onTap: () => ctrl.minimizeStream(),
+                                child: Container(
+                                  padding: EdgeInsets.all(7.r),
+                                  decoration: const BoxDecoration(color: Colors.black38, shape: BoxShape.circle),
+                                  child: Icon(Icons.fullscreen_exit_rounded, color: Colors.white, size: 20.sp),
+                                ),
+                              ),
+                              SizedBox(width: 8.w),
+                              GestureDetector(
+                                onTap: () => _showExitDialog(ctrl),
+                                child: Container(
+                                  padding: EdgeInsets.all(7.r),
+                                  decoration: const BoxDecoration(color: Colors.black38, shape: BoxShape.circle),
+                                  child: Icon(Icons.close_rounded, color: Colors.white, size: 20.sp),
+                                ),
+                              ),
+                            ],
                           ),
                            // LIVE pill & TIMER row
                           Row(
@@ -731,16 +751,7 @@ class _ViewerLiveScreenState extends State<ViewerLiveScreen> {
                         Get.back(); // Close checkout sheet
                         ctrl.showWinnerOverlay.value = false; // Close Winner overlay
                         
-                        Get.snackbar(
-                          "Payment Successful!",
-                          "Your order has been placed successfully!",
-                          backgroundColor: const Color(0xFF8B9BFF),
-                          colorText: const Color(0xFF0F0B1E),
-                          duration: const Duration(seconds: 4),
-                        );
-                        
-                        // Go to purchases screen
-                        Get.toNamed(AppRoute.purchases);
+                        _showOrderSuccessDialog(context, ctrl, winningAmount);
                       } else {
                         Get.snackbar(
                           "Payment Failed",
@@ -775,6 +786,115 @@ class _ViewerLiveScreenState extends State<ViewerLiveScreen> {
         ),
       ),
       isScrollControlled: true,
+    );
+  }
+
+  void _showOrderSuccessDialog(BuildContext context, AgoraLiveController ctrl, double winningAmount) {
+    Get.dialog(
+      Dialog(
+        backgroundColor: const Color(0xFF1E1B2E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24.r)),
+        child: Padding(
+          padding: EdgeInsets.all(24.r),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 64.r,
+                height: 64.r,
+                decoration: const BoxDecoration(
+                  color: Color(0xFF22C55E),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.check_rounded, color: Colors.white, size: 36.sp),
+              ),
+              SizedBox(height: 16.h),
+              Text(
+                "Payment Successful!",
+                style: TextStyle(color: Colors.white, fontSize: 20.sp, fontWeight: FontWeight.w900),
+              ),
+              SizedBox(height: 8.h),
+              Text(
+                "Your auction order message has been sent to your Inbox with full order details.",
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.white70, fontSize: 13.sp),
+              ),
+              SizedBox(height: 16.h),
+              Container(
+                padding: EdgeInsets.all(12.r),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.05),
+                  borderRadius: BorderRadius.circular(16.r),
+                  border: Border.all(color: Colors.white10),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 48.r,
+                      height: 48.r,
+                      clipBehavior: Clip.antiAlias,
+                      decoration: BoxDecoration(borderRadius: BorderRadius.circular(10.r)),
+                      child: ctrl.currentProductImage.value.isEmpty
+                          ? Container(color: Colors.white10, child: Icon(Icons.image, color: Colors.white38, size: 20.sp))
+                          : Image.network(
+                              ctrl.currentProductImage.value.startsWith('http')
+                                  ? ctrl.currentProductImage.value
+                                  : "${ApiUrl.imageBaseUrl}${ctrl.currentProductImage.value}",
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => Container(color: Colors.white10, child: Icon(Icons.image, color: Colors.white38, size: 20.sp)),
+                            ),
+                    ),
+                    SizedBox(width: 12.w),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            ctrl.currentProductTitle.value.isNotEmpty ? ctrl.currentProductTitle.value : "Auction Winner Item",
+                            style: TextStyle(color: Colors.white, fontSize: 13.sp, fontWeight: FontWeight.bold),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          SizedBox(height: 4.h),
+                          Text(
+                            "Winning Bid: \$${winningAmount.toStringAsFixed(0)}",
+                            style: TextStyle(color: const Color(0xFF8B9BFF), fontSize: 12.sp, fontWeight: FontWeight.w800),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(height: 24.h),
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Get.back();
+                        Get.toNamed(AppRoute.purchases);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF8B9BFF),
+                        foregroundColor: const Color(0xFF0F0B1E),
+                        padding: EdgeInsets.symmetric(vertical: 12.h),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
+                      ),
+                      child: Text("View Purchases", style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w900)),
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 8.h),
+              TextButton(
+                onPressed: () => Get.back(),
+                child: Text("Continue Watching Stream", style: TextStyle(color: Colors.white38, fontSize: 12.sp, fontWeight: FontWeight.w700)),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -1446,39 +1566,7 @@ class _ViewerLiveScreenState extends State<ViewerLiveScreen> {
         ),
         SizedBox(width: 8.w),
 
-        // Custom Offer Button
-        GestureDetector(
-          onTap: () => _showCustomOfferSheet(),
-          child: Container(
-            height: 48.r,
-            padding: EdgeInsets.symmetric(horizontal: 12.w),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF8B9BFF), Color(0xFFBD8BFF)],
-              ),
-              borderRadius: BorderRadius.circular(24.r),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFFBD8BFF).withOpacity(0.3),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.handshake_rounded, color: Colors.white, size: 16.sp),
-                SizedBox(width: 4.w),
-                Text(
-                  "Offer",
-                  style: TextStyle(color: Colors.white, fontSize: 11.sp, fontWeight: FontWeight.w900),
-                ),
-              ],
-            ),
-          ),
-        ),
-        SizedBox(width: 8.w),
+
 
         // Custom Bid Button
         GestureDetector(
@@ -1505,13 +1593,15 @@ class _ViewerLiveScreenState extends State<ViewerLiveScreen> {
         Obx(() {
           final currentBid = ctrl.currentBidPrice.value;
           final nextBid = currentBid > 0 ? (currentBid + ctrl.bidIncrement.value) : ctrl.bidIncrement.value;
+          final isBidding = ctrl.isPlacingBid.value;
           return GestureDetector(
-            onTap: () => ctrl.placeBid(nextBid),
-            child: Container(
+            onTap: isBidding ? null : () => ctrl.placeBid(nextBid),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
               height: 48.h,
               padding: EdgeInsets.fromLTRB(16.w, 4.h, 8.w, 4.h),
               decoration: BoxDecoration(
-                color: const Color(0xFF8B9BFF),
+                color: isBidding ? const Color(0xFF8B9BFF).withValues(alpha: 0.6) : const Color(0xFF8B9BFF),
                 borderRadius: BorderRadius.circular(24.r),
               ),
               child: Row(
@@ -1524,7 +1614,7 @@ class _ViewerLiveScreenState extends State<ViewerLiveScreen> {
                       Text(
                         "BID",
                         style: TextStyle(
-                          color: Colors.black.withOpacity(0.6),
+                          color: Colors.black.withValues(alpha: 0.6),
                           fontSize: 9.sp,
                           fontWeight: FontWeight.w900,
                           height: 1.0,
@@ -1547,13 +1637,21 @@ class _ViewerLiveScreenState extends State<ViewerLiveScreen> {
                     width: 32.r,
                     height: 32.r,
                     decoration: const BoxDecoration(
-                      color: Color(0xFF6B7BFF), // darker blue circle accent
+                      color: Color(0xFF6B7BFF),
                       shape: BoxShape.circle,
                     ),
-                    child: Icon(
-                      Icons.arrow_forward_rounded,
-                      color: Colors.black,
-                      size: 16.sp,
+                    child: Center(
+                      child: isBidding
+                          ? SizedBox(
+                              width: 14.r,
+                              height: 14.r,
+                              child: const CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                            )
+                          : Icon(
+                              Icons.arrow_forward_rounded,
+                              color: Colors.black,
+                              size: 16.sp,
+                            ),
                     ),
                   ),
                 ],
@@ -1977,6 +2075,51 @@ class _ViewerLiveScreenState extends State<ViewerLiveScreen> {
         ),
       ),
       isScrollControlled: true,
+    );
+  }
+
+  void _showExitDialog(AgoraLiveController ctrl) {
+    Get.dialog(
+      AlertDialog(
+        backgroundColor: const Color(0xFF1E1B2E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.r)),
+        title: Text(
+          "Exit Live Stream?",
+          style: TextStyle(color: Colors.white, fontSize: 18.sp, fontWeight: FontWeight.bold),
+        ),
+        content: Text(
+          "Would you like to minimize the stream to keep watching, or exit completely?",
+          style: TextStyle(color: Colors.white70, fontSize: 13.sp),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(),
+            child: const Text("Cancel", style: TextStyle(color: Colors.white60)),
+          ),
+          OutlinedButton(
+            onPressed: () {
+              Get.back();
+              ctrl.minimizeStream();
+            },
+            style: OutlinedButton.styleFrom(
+              side: const BorderSide(color: Color(0xFF8B9BFF)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+            ),
+            child: const Text("Minimize", style: TextStyle(color: Color(0xFF8B9BFF))),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.redAccent,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+            ),
+            onPressed: () {
+              Get.back();
+              ctrl.endStream();
+            },
+            child: const Text("Leave", style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -1,0 +1,216 @@
+Streaming UX Improvement – Floating Mini Player (Host & Viewer)
+Objective
+
+The current live streaming experience is not providing a smooth user experience. We need to redesign the streaming flow so that both Hosts and Viewers can continue using other parts of the application without leaving or interrupting the live stream.
+
+The experience should feel similar to WhatsApp, IMO, Messenger, or YouTube Picture-in-Picture (PiP) where the ongoing call/live stream remains visible as a floating mini player while users navigate through the app.
+
+Required User Experience
+1. Host Experience
+
+When a host starts a live stream:
+
+The stream must continue running even if the host leaves the streaming screen.
+If the host navigates anywhere else inside the app:
+Chat
+Notifications
+Profile
+Marketplace
+Home
+Settings
+Any other page
+
+the live stream must NOT stop.
+
+Instead:
+
+A small draggable floating mini-player should appear.
+The mini-player should always remain visible above all application screens.
+The host can continue chatting and browsing while streaming.
+
+The host should always know:
+
+Live is running
+Camera is active
+Microphone is active
+Viewer count
+Live duration
+2. Viewer Experience
+
+The same experience should exist for viewers.
+
+When a viewer joins a live stream:
+
+If they leave the live screen:
+
+The stream should continue playing inside a floating mini player.
+
+The viewer should still be able to:
+
+Chat with sellers
+Browse products
+Open notifications
+Search items
+View profiles
+Purchase products
+Navigate anywhere
+
+without disconnecting from the live stream.
+
+Floating Mini Player
+
+The mini player should behave similar to:
+
+WhatsApp Call
+IMO Call
+Messenger Call
+YouTube PiP
+
+Requirements:
+
+Draggable
+Snap to screen edges
+Always on top of app pages
+Can be minimized
+Can be expanded
+Does not block navigation
+Smooth animations
+Host Mini Player Controls
+
+The floating card should include:
+
+Live indicator (🔴 LIVE)
+Camera preview
+Viewer count
+Live duration timer
+Mute / Unmute
+Camera On / Off
+Switch Camera
+Return to Full Screen
+End Live button
+
+The host must be able to end the stream only from:
+
+Full streaming screen
+Mini player controls
+
+Never lose access to ending the stream.
+
+Viewer Mini Player Controls
+
+Viewer mini player should contain:
+
+Video preview
+Host name
+LIVE badge
+Expand button
+Close button (Leave Stream)
+
+Closing should disconnect only the viewer.
+
+Navigation Behaviour
+
+When navigating:
+
+Streaming Session
+↓
+Open Chat
+↓
+Open Notifications
+↓
+Open Marketplace
+↓
+Open Product
+↓
+Back
+↓
+Streaming Still Active
+
+The streaming session must never restart.
+
+No reconnecting.
+
+No black screen.
+
+No loading spinner.
+
+Restore Full Screen
+
+Tapping the mini player should instantly restore the previous live screen.
+
+The user should return to exactly where they left.
+
+No rejoining.
+
+No reinitialization.
+
+No RTC reconnect.
+
+Technical Requirements
+
+Maintain a single persistent streaming session throughout the app.
+
+Do NOT recreate:
+
+Agora Engine
+RTC Connection
+Socket Connection
+
+These services must remain alive while navigating.
+
+Implement a global Live Session Manager responsible for:
+
+Stream lifecycle
+Connection state
+Camera state
+Mic state
+Floating player visibility
+Navigation restoration
+
+The mini player should be controlled by this manager.
+
+Background Behaviour
+
+If the app goes into the background:
+
+Host:
+
+Continue streaming if platform permissions allow.
+Preserve RTC connection.
+Restore instantly when the app returns.
+
+Viewer:
+
+Pause rendering if necessary.
+Reconnect seamlessly if required.
+Never lose session unexpectedly.
+State Management
+
+Streaming state must persist globally.
+
+Store:
+
+Current Live ID
+Host ID
+Viewer status
+RTC Channel
+Camera state
+Microphone state
+Stream duration
+Viewer count
+Floating player state
+Current screen
+Performance Goals
+Smooth 60 FPS animations
+No UI lag
+No duplicate Agora instances
+Minimal memory usage
+Minimal battery consumption
+No unnecessary rebuilds
+Final Goal
+
+The live streaming experience should feel premium and production-ready.
+
+Users should feel that the live stream is a persistent part of the app, allowing them to freely browse, chat, shop, and navigate while the stream continues uninterrupted in a floating mini-player—similar to the seamless experience offered by WhatsApp, IMO, Messenger, and YouTube Picture-in-Picture.
+
+The implementation should prioritize scalability, stability, clean architecture, and an exceptional user experience for both Hosts and Viewers.

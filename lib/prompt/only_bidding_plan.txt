@@ -1,0 +1,35 @@
+Bidding System Update Guide
+Scope: Strictly details the backend updates and changes made to the Live Auction Bidding System.
+⚡ What Was Updated in the Backend
+1. Auto-Activation on Creation
+When an auction item is registered via POST /api/v1/auctions/item, its status is now automatically set to "active" (previously it defaulted to "pending" which blocked all bids).
+2. startingBid & endsAt Mapping
+startingBid: Sent in the request body, automatically mapped to currentBid in the database.
+endsAt: If omitted in creation payload, it is automatically computed using timerDuration (defaults to 60s):
+endsAt = Date.now() + timerDuration * 1000
+3. New Socket Event: auction-item-started
+When seller calls POST /api/v1/auctions/item, the backend automatically broadcasts this event to the stream room (stream:<streamId>):
+json// Event Name: "auction-item-started"{  "auctionItemId": "6a61e7ac...",  "streamId": "6a5abc8a...",  "currentBid": 50.0,  "bidIncrement": 5.0,  "endsAt": "2026-07-23T16:17:00.000Z",  "product": { ... }}
+🎯 How Bidding Works (Key Instructions for App Dev)
+1. Receiving the auctionItemId
+When a buyer is in a stream room, listen for auction-item-started:
+javascriptsocket.on("auction-item-started", (data) => {  const auctionItemId = data.auctionItemId; // Save this ID for placing bids  const currentBid = data.currentBid;});
+(Optional Fallback Endpoint if socket missed):
+GET /api/v1/auctions/stream/:streamId/items
+2. Placing a Bid
+Use the auctionItemId received above (do NOT pass streamId as auctionItemId).
+Via REST API:
+httpPOST /api/v1/auctions/bidHeaders: Authorization: Bearer <TOKEN>Content-Type: application/json{  "auctionItemId": "6a61e7ac...",  "bidAmount": 75}
+Via Socket:
+javascriptsocket.emit("place-bid", {  "streamId": "<STREAM_ID>",  "auctionItemId": "6a61e7ac...",  "bidAmount": 75,  "bidderId": "<BUYER_USER_ID>"});
+3. Validation Rules
+Bid Amount Rule: bidAmount must be strictly greater than currentBid.
+Status Rule: Bidding only succeeds if the item's status is "active".
+📡 Related Real-Time Socket Events
+ 
+Event Name	Type	Payload Summary
+auction-item-started	Broadcast (Server → Room)	Sent when seller launches item. Contains auctionItemId.
+new-bid	Broadcast (Server → Room)	Sent when a valid higher bid is placed. Contains currentBid, highestBidder, endsAt.
+bid-error	Direct (Server → Bidder)	Sent if bid is rejected (amount too low or invalid ID).
+auction-won	Direct (Server → Winner)	Sent when auction completes. Contains checkoutUrl.
+ 

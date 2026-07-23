@@ -6,6 +6,8 @@ import 'package:flutter_stripe/flutter_stripe.dart';
 import 'core/app_route.dart';
 import 'core/dependency.dart';
 import 'data/helpers/shared_prefe.dart';
+import 'global/widgets/floating_live_stream_overlay.dart';
+import 'view/screens/live_stream/controller/agora_live_controller.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -74,7 +76,27 @@ class MyApp extends StatelessWidget {
           routingCallback: (routing) {
             if (routing != null) {
               AppRoute.routeStream.add(routing.current);
+              try {
+                if (Get.isRegistered<AgoraLiveController>()) {
+                  final ctrl = Get.find<AgoraLiveController>();
+                  if (ctrl.isLive.value) {
+                    if (routing.current != AppRoute.hostLive && routing.current != AppRoute.viewerLive) {
+                      ctrl.isMinimized.value = true;
+                    } else {
+                      ctrl.isMinimized.value = false;
+                    }
+                  }
+                }
+              } catch (_) {}
             }
+          },
+          builder: (context, widget) {
+            return Stack(
+              children: [
+                if (widget != null) widget,
+                const FloatingLiveStreamOverlay(),
+              ],
+            );
           },
         );
       },

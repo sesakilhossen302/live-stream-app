@@ -279,29 +279,7 @@ class LiveStreamScreen extends StatelessWidget {
                             ),
                           ),
                           SizedBox(width: 6.w),
-                          // Custom Offer Button
-                          GestureDetector(
-                            onTap: () => _showCustomOfferSheet(context, controller, stream),
-                            child: Container(
-                              height: 52.h,
-                              padding: EdgeInsets.symmetric(horizontal: 10.w),
-                              decoration: BoxDecoration(
-                                gradient: const LinearGradient(
-                                  colors: [Color(0xFF8B9BFF), Color(0xFFBD8BFF)],
-                                ),
-                                borderRadius: BorderRadius.circular(26.r),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.handshake_rounded, color: Colors.white, size: 14.sp),
-                                  SizedBox(width: 4.w),
-                                  Text("Offer", style: TextStyle(color: Colors.white, fontSize: 10.sp, fontWeight: FontWeight.bold)),
-                                ],
-                              ),
-                            ),
-                          ),
-                          SizedBox(width: 6.w),
+
                           GestureDetector(
                             onTap: () => _showCustomBidSheet(context, controller, stream),
                             child: Container(

@@ -70,7 +70,7 @@ class CustomBottomNavbar extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: const Color(0xFF8B9BFF),
                   shape: BoxShape.circle,
-                  boxShadow: [
+                  boxShadow : [
                     BoxShadow(
                       color: const Color(0xFF8B9BFF).withValues(alpha: 0.5),
                       blurRadius: 25.r,

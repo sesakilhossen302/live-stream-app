@@ -27,6 +27,7 @@ class _HostLiveScreenState extends State<HostLiveScreen> {
     super.initState();
     ctrl = Get.find<AgoraLiveController>();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      ctrl.isMinimized.value = false;
       ctrl.ensureHostCameraActive();
     });
   }
@@ -46,7 +47,7 @@ class _HostLiveScreenState extends State<HostLiveScreen> {
         return false;
       },
       child: Scaffold(
-        backgroundColor: Colors.black,
+        backgroundColor: Colors.transparent,
         body: Stack(
           children: [
             // ── Local Camera Preview
@@ -58,8 +59,8 @@ class _HostLiveScreenState extends State<HostLiveScreen> {
                     rtcEngine: ctrl.engine!,
                     canvas: const VideoCanvas(
                       uid: 0,
-                      renderMode: RenderModeType.renderModeFit,
-                      mirrorMode: VideoMirrorModeType.videoMirrorModeAuto,
+                      renderMode: RenderModeType.renderModeHidden,
+                      mirrorMode: VideoMirrorModeType.videoMirrorModeEnabled,
                     ),
                     useFlutterTexture: false,
                     useAndroidSurfaceView: true,

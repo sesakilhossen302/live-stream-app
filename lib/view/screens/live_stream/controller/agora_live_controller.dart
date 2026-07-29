@@ -123,10 +123,14 @@ class AgoraLiveController extends GetxController with WidgetsBindingObserver {
 
   Future<void> ensureHostCameraActive() async {
     isHost.value = true;
+    isMinimized.value = false;
+    isCameraOn.value = true;
     if (engine != null) {
       try {
         await engine!.setClientRole(role: ClientRoleType.clientRoleBroadcaster);
         await engine!.enableVideo();
+        await engine!.enableLocalVideo(true);
+        await engine!.muteLocalVideoStream(false);
         await engine!.startPreview();
         isLocalVideoReady.value = true;
         debugPrint("📹 [AgoraLiveController] Host camera preview ensured and ready.");
@@ -1625,7 +1629,14 @@ class AgoraLiveController extends GetxController with WidgetsBindingObserver {
               token: token,
               channelId: channel,
               uid: userUid,
-              options: const ChannelMediaOptions(),
+              options: ChannelMediaOptions(
+                clientRoleType: isHost ? ClientRoleType.clientRoleBroadcaster : ClientRoleType.clientRoleAudience,
+                channelProfile: ChannelProfileType.channelProfileLiveBroadcasting,
+                publishCameraTrack: isHost,
+                publishMicrophoneTrack: isHost,
+                autoSubscribeAudio: true,
+                autoSubscribeVideo: true,
+              ),
             );
           }
         },
@@ -1655,6 +1666,17 @@ class AgoraLiveController extends GetxController with WidgetsBindingObserver {
           debugPrint("👤 Remote user joined: $uid");
           remoteUid.value = uid;
           remoteJoined.value = true;
+        },
+        onRemoteVideoStateChanged: (connection, uid, state, reason, elapsed) {
+          debugPrint("📹 Remote video state changed for $uid: state=$state, reason=$reason");
+          if (state == RemoteVideoState.remoteVideoStateDecoding || state == RemoteVideoState.remoteVideoStateStarting) {
+            remoteUid.value = uid;
+            remoteJoined.value = true;
+          } else if (state == RemoteVideoState.remoteVideoStateStopped || state == RemoteVideoState.remoteVideoStateFailed) {
+            if (uid == remoteUid.value) {
+              remoteJoined.value = false;
+            }
+          }
         },
         onUserOffline: (connection, uid, reason) {
           debugPrint("👤 Remote user left: $uid");
@@ -1691,6 +1713,7 @@ class AgoraLiveController extends GetxController with WidgetsBindingObserver {
           );
         } catch (_) {}
         await engine!.enableVideo();
+        await engine!.enableLocalVideo(true);
         await engine!.startPreview();
         isLocalVideoReady.value = true; // Show camera immediately after preview starts
       } else {
@@ -1703,7 +1726,14 @@ class AgoraLiveController extends GetxController with WidgetsBindingObserver {
         token: token,
         channelId: channel,
         uid: userUid,
-        options: const ChannelMediaOptions(),
+        options: ChannelMediaOptions(
+          clientRoleType: isHost ? ClientRoleType.clientRoleBroadcaster : ClientRoleType.clientRoleAudience,
+          channelProfile: ChannelProfileType.channelProfileLiveBroadcasting,
+          publishCameraTrack: isHost,
+          publishMicrophoneTrack: isHost,
+          autoSubscribeAudio: true,
+          autoSubscribeVideo: true,
+        ),
       );
       debugPrint("✅ Agora channel joined: $channel");
       return true;

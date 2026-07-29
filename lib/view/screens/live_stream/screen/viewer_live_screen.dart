@@ -69,7 +69,10 @@ class _ViewerLiveScreenState extends State<ViewerLiveScreen> {
                   return AgoraVideoView(
                     controller: VideoViewController.remote(
                       rtcEngine: ctrl.engine!,
-                      canvas: VideoCanvas(uid: rUid),
+                      canvas: VideoCanvas(
+                        uid: rUid,
+                        renderMode: RenderModeType.renderModeHidden,
+                      ),
                       connection: RtcConnection(channelId: ctrl.channelName.value),
                       useFlutterTexture: false,
                       useAndroidSurfaceView: true,

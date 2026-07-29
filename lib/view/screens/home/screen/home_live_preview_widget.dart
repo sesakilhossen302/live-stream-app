@@ -1,4 +1,4 @@
-﻿import 'dart:convert';
+import 'dart:convert';
 import 'dart:async';
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:flutter/material.dart';
@@ -188,7 +188,10 @@ class _HomeLivePreviewWidgetState extends State<HomeLivePreviewWidget> {
           child: AgoraVideoView(
             controller: VideoViewController.remote(
               rtcEngine: _engine!,
-              canvas: VideoCanvas(uid: _remoteUid),
+              canvas: VideoCanvas(
+                uid: _remoteUid,
+                renderMode: RenderModeType.renderModeHidden,
+              ),
               connection: RtcConnection(channelId: widget.channelName),
               useFlutterTexture: false,
               useAndroidSurfaceView: true,

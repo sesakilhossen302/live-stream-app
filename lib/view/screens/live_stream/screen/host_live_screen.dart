@@ -54,16 +54,18 @@ class _HostLiveScreenState extends State<HostLiveScreen> {
             Obx(() {
               final isReady = ctrl.isLocalVideoReady.value;
               if (ctrl.engine != null && isReady) {
-                return AgoraVideoView(
-                  controller: VideoViewController(
-                    rtcEngine: ctrl.engine!,
-                    canvas: const VideoCanvas(
-                      uid: 0,
-                      renderMode: RenderModeType.renderModeHidden,
-                      mirrorMode: VideoMirrorModeType.videoMirrorModeEnabled,
+                return RepaintBoundary(
+                  child: AgoraVideoView(
+                    controller: VideoViewController(
+                      rtcEngine: ctrl.engine!,
+                      canvas: const VideoCanvas(
+                        uid: 0,
+                        renderMode: RenderModeType.renderModeHidden,
+                        mirrorMode: VideoMirrorModeType.videoMirrorModeEnabled,
+                      ),
+                      useFlutterTexture: false,
+                      useAndroidSurfaceView: true,
                     ),
-                    useFlutterTexture: false,
-                    useAndroidSurfaceView: true,
                   ),
                 );
               }

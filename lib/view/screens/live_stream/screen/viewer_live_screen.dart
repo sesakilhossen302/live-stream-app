@@ -66,16 +66,18 @@ class _ViewerLiveScreenState extends State<ViewerLiveScreen> {
                 final isJoined = ctrl.remoteJoined.value;
                 final rUid = ctrl.remoteUid.value;
                 if (ctrl.engine != null && isJoined && rUid != -1) {
-                  return AgoraVideoView(
-                    controller: VideoViewController.remote(
-                      rtcEngine: ctrl.engine!,
-                      canvas: VideoCanvas(
-                        uid: rUid,
-                        renderMode: RenderModeType.renderModeHidden,
+                  return RepaintBoundary(
+                    child: AgoraVideoView(
+                      controller: VideoViewController.remote(
+                        rtcEngine: ctrl.engine!,
+                        canvas: VideoCanvas(
+                          uid: rUid,
+                          renderMode: RenderModeType.renderModeHidden,
+                        ),
+                        connection: RtcConnection(channelId: ctrl.channelName.value),
+                        useFlutterTexture: false,
+                        useAndroidSurfaceView: true,
                       ),
-                      connection: RtcConnection(channelId: ctrl.channelName.value),
-                      useFlutterTexture: false,
-                      useAndroidSurfaceView: true,
                     ),
                   );
                 }

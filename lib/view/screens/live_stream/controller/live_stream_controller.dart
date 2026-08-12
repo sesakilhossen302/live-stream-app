@@ -332,6 +332,17 @@ class LiveStreamController extends GetxController {
     if (index + 1 < streams.length) {
       _initializeController(index + 1);
     }
+
+    // Cleanup controllers far behind (index - 2 or further) to free RAM & prevent OOM
+    for (int i = 0; i < videoControllers.length; i++) {
+      if ((i < index - 1 || i > index + 2) && videoControllers[i] != null) {
+        try {
+          videoControllers[i]?.dispose();
+        } catch (_) {}
+        videoControllers[i] = null;
+        videoReady[i] = false;
+      }
+    }
     
     update();
   }

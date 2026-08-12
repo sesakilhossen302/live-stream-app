@@ -1706,6 +1706,19 @@ class AgoraLiveController extends GetxController with WidgetsBindingObserver {
       if (isHost) {
         await engine!.setClientRole(role: ClientRoleType.clientRoleBroadcaster);
         try {
+          await engine!.setVideoEncoderConfiguration(
+            const VideoEncoderConfiguration(
+              dimensions: VideoDimensions(width: 720, height: 1280),
+              frameRate: 30,
+              bitrate: 1800,
+              orientationMode: OrientationMode.orientationModeFixedPortrait,
+            ),
+          );
+          await engine!.enableDualStreamMode(true);
+        } catch (e) {
+          debugPrint("⚠️ Encoder config warning: $e");
+        }
+        try {
           await engine!.setCameraCapturerConfiguration(
             const CameraCapturerConfiguration(
               cameraDirection: CameraDirection.cameraFront,
@@ -1717,7 +1730,12 @@ class AgoraLiveController extends GetxController with WidgetsBindingObserver {
         await engine!.startPreview();
         isLocalVideoReady.value = true; // Show camera immediately after preview starts
       } else {
-        await engine!.setClientRole(role: ClientRoleType.clientRoleAudience);
+        await engine!.setClientRole(
+          role: ClientRoleType.clientRoleAudience,
+          options: const ClientRoleOptions(
+            audienceLatencyLevel: AudienceLatencyLevelType.audienceLatencyLevelUltraLowLatency,
+          ),
+        );
         await engine!.enableVideo();
       }
 
@@ -1733,6 +1751,9 @@ class AgoraLiveController extends GetxController with WidgetsBindingObserver {
           publishMicrophoneTrack: isHost,
           autoSubscribeAudio: true,
           autoSubscribeVideo: true,
+          audienceLatencyLevel: isHost
+              ? AudienceLatencyLevelType.audienceLatencyLevelUltraLowLatency
+              : AudienceLatencyLevelType.audienceLatencyLevelUltraLowLatency,
         ),
       );
       debugPrint("✅ Agora channel joined: $channel");

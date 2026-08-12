@@ -113,12 +113,42 @@ class _ViewerLiveScreenState extends State<ViewerLiveScreen> {
                       Colors.black.withValues(alpha: 0.4),
                       Colors.transparent,
                       Colors.transparent,
-                      Colors.black.withValues(alpha: 0.9),
+                      Colors.black.withValues(alpha: 0.8),
                     ],
-                    stops: const [0.0, 0.2, 0.6, 1.0],
+                    stops: const [0.0, 0.25, 0.6, 1.0],
                   ),
                 ),
               ),
+            ),
+
+            // ── Weak Network Warning Overlay
+            Positioned(
+              top: MediaQuery.of(context).padding.top + 60.h,
+              left: 16.w,
+              right: 16.w,
+              child: Obx(() {
+                if (!ctrl.isNetworkWeak.value) return const SizedBox.shrink();
+                return Container(
+                  padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.shade900.withValues(alpha: 0.85),
+                    borderRadius: BorderRadius.circular(20.r),
+                    border: Border.all(color: Colors.amber.withValues(alpha: 0.6)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.wifi_off_rounded, color: Colors.white, size: 14.sp),
+                      SizedBox(width: 6.w),
+                      Text(
+                        "Weak Connection — Optimizing stream quality",
+                        style: TextStyle(color: Colors.white, fontSize: 11.sp, fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
+                );
+              }),
             ),
 
             // ── Top Overlay (Close button, LIVE count, Host info)

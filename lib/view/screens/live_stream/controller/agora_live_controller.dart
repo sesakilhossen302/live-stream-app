@@ -61,8 +61,9 @@ class AgoraLiveController extends GetxController with WidgetsBindingObserver {
   final RxDouble totalSalesRevenue = 0.0.obs;
   final RxInt totalItemsSold = 0.obs;
 
-  // Audio mute for viewer
+  // Audio mute & network status for viewer
   final RxBool isAudioMuted = false.obs;
+  final RxBool isNetworkWeak = false.obs;
 
   // Auction / product
   final RxString auctionItemId = "".obs;
@@ -1696,6 +1697,18 @@ class AgoraLiveController extends GetxController with WidgetsBindingObserver {
               duration: const Duration(seconds: 10),
               snackPosition: SnackPosition.TOP,
             );
+          }
+        },
+        onNetworkQuality: (connection, uid, txQuality, rxQuality) {
+          final isPoor = txQuality == QualityType.qualityBad ||
+              txQuality == QualityType.qualityVbad ||
+              rxQuality == QualityType.qualityBad ||
+              rxQuality == QualityType.qualityVbad;
+          if (isNetworkWeak.value != isPoor) {
+            isNetworkWeak.value = isPoor;
+            if (isPoor) {
+              debugPrint("⚠️ [AgoraLive] Network connection weak for uid: $uid");
+            }
           }
         },
       ));

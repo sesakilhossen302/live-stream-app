@@ -3,6 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'core/app_route.dart';
 import 'core/dependency.dart';
 import 'data/helpers/shared_prefe.dart';
@@ -12,13 +13,21 @@ import 'view/screens/live_stream/controller/agora_live_controller.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Load environment variables safely
+  try {
+    await dotenv.load(fileName: ".env");
+  } catch (e) {
+    debugPrint("⚠️ Environment file (.env) load error: $e");
+  }
+
   // Initialize Stripe publishable key safely
   try {
-    Stripe.publishableKey = 'pk_test_51RcvK8GdOsJASBMC9aDK1onP8kTVwAxve4385Mr09r2Edd1fxcbSWD1y5DCclahZ7MHa0hf1eBnsnq16bWavPRY400W2WfumAa';
+    Stripe.publishableKey = dotenv.env['STRIPE_PUBLISHABLE_KEY'] ?? '';
     Stripe.instance.applySettings();
   } catch (e) {
     debugPrint("Stripe init error: $e");
   }
+
 
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(

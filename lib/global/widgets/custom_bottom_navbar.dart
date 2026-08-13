@@ -106,6 +106,15 @@ class CustomBottomNavbar extends StatelessWidget {
           decoration: BoxDecoration(
             color: isSelected ? const Color(0xFF8B9BFF) : Colors.transparent,
             borderRadius: BorderRadius.circular(28.r),
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: const Color(0xFF8B9BFF).withValues(alpha: 0.45),
+                      blurRadius: 14.r,
+                      offset: const Offset(0, 4),
+                    ),
+                  ]
+                : null,
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,

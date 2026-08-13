@@ -5,6 +5,7 @@ import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../../../../data/helpers/shared_prefe.dart';
 import '../../../../data/services/api_client.dart';
 import '../../../../data/services/api_url.dart';
@@ -39,7 +40,7 @@ class FloatingEmoji {
   });
 }
 
-const String agoraAppId = "040148b3e0a14154bc4eb74663dabf5f";
+String get agoraAppId => dotenv.env['AGORA_APP_ID'] ?? "040148b3e0a14154bc4eb74663dabf5f";
 
 class AgoraLiveController extends GetxController with WidgetsBindingObserver {
   final ApiClient _apiClient = Get.find<ApiClient>();
@@ -1727,7 +1728,7 @@ class AgoraLiveController extends GetxController with WidgetsBindingObserver {
               orientationMode: OrientationMode.orientationModeFixedPortrait,
             ),
           );
-          await engine!.enableDualStreamMode(true);
+          await engine!.enableDualStreamMode(enabled: true);
         } catch (e) {
           debugPrint("⚠️ Encoder config warning: $e");
         }

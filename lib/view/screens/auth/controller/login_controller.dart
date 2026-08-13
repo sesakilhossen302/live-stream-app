@@ -97,8 +97,7 @@ class LoginController extends GetxController {
       }
     } catch (e) {
       Get.snackbar(
-        "Error",
-        "An unexpected error occurred. Please check your connection.",
+        "Try again","Please check your connection.",
         backgroundColor: Colors.red.withOpacity(0.8),
         colorText: Colors.white,
       );

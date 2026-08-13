@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import '../../view/screens/live_stream/controller/agora_live_controller.dart';
-import '../../data/services/api_url.dart';
+
 
 class FloatingLiveStreamOverlay extends StatefulWidget {
   const FloatingLiveStreamOverlay({super.key});
@@ -86,21 +86,29 @@ class _FloatingLiveStreamOverlayState extends State<FloatingLiveStreamOverlay> w
             },
             onPanEnd: (_) => _snapToEdge(screenWidth, screenHeight),
             onTap: () => ctrl.resumeStream(),
-            child: Container(
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
               width: _miniWidth.w,
               height: _miniHeight.h,
               decoration: BoxDecoration(
                 color: const Color(0xFF0F0B1E),
-                borderRadius: BorderRadius.circular(20.r),
-                border: Border.all(color: const Color(0xFF8B9BFF), width: 2.w),
+                borderRadius: BorderRadius.circular(22.r),
+                border: Border.all(color: const Color(0xFF8B9BFF).withValues(alpha: 0.8), width: 2.w),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.8),
-                    blurRadius: 20.r,
-                    offset: const Offset(0, 8),
+                    color: const Color(0xFF8B9BFF).withValues(alpha: 0.35),
+                    blurRadius: 18.r,
+                    spreadRadius: 2.r,
+                    offset: const Offset(0, 6),
+                  ),
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.7),
+                    blurRadius: 24.r,
+                    offset: const Offset(0, 10),
                   ),
                 ],
               ),
+
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(18.r),
                 child: Stack(

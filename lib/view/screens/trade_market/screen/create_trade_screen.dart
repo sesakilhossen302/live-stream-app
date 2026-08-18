@@ -79,13 +79,15 @@ class CreateTradeScreen extends GetView<CreateTradeController> {
                 _buildTextField(
                   "e.g. Vintage 1964 Chronograph",
                   controller.itemNameController,
+                  prefixIcon: Icon(Icons.bookmark_border_rounded, color: const Color(0xFF8B9BFF), size: 18.sp),
                 ),
                 SizedBox(height: 24.h),
                 _buildLabel("Description"),
                 _buildTextField(
-                  "Detail the narrative and\nspecifications of your item...",
+                  "Detail the narrative and specifications of your item...",
                   controller.descriptionController,
                   maxLines: 3,
+                  prefixIcon: Icon(Icons.notes_rounded, color: const Color(0xFF8B9BFF), size: 18.sp),
                 ),
                 SizedBox(height: 24.h),
                 Row(
@@ -100,10 +102,11 @@ class CreateTradeScreen extends GetView<CreateTradeController> {
                             controller.categories,
                             (val) => controller.setCategory(val),
                           ),
+                          leadingIcon: Icons.category_outlined,
                         ),
                       ),
                     ),
-                    SizedBox(width: 16.w),
+                    SizedBox(width: 14.w),
                     Expanded(
                       child: Obx(
                         () => _buildSelectable(
@@ -114,6 +117,7 @@ class CreateTradeScreen extends GetView<CreateTradeController> {
                             controller.conditions,
                             (val) => controller.setCondition(val),
                           ),
+                          leadingIcon: Icons.stars_outlined,
                         ),
                       ),
                     ),
@@ -125,6 +129,102 @@ class CreateTradeScreen extends GetView<CreateTradeController> {
                   "5000",
                   controller.estValueController,
                   keyboardType: TextInputType.number,
+                  prefixText: "\$",
+                ),
+                SizedBox(height: 24.h),
+
+                // ── Shipping Weight (Feature 1) ─────────────────────────────
+                _buildLabel("Shipping weight"),
+                Container(
+                  height: 54.h,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF161622),
+                    borderRadius: BorderRadius.circular(16.r),
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.08),
+                      width: 1.2,
+                    ),
+                  ),
+                  padding: EdgeInsets.symmetric(horizontal: 16.w),
+                  child: Row(
+                    children: [
+                      Icon(Icons.scale_outlined, color: const Color(0xFF8B9BFF), size: 18.sp),
+                      SizedBox(width: 10.w),
+                      Expanded(
+                        child: TextField(
+                          controller: controller.shippingWeightController,
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 14.sp,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          decoration: InputDecoration(
+                            hintText: "e.g. 1.5",
+                            hintStyle: TextStyle(
+                              color: Colors.white.withOpacity(0.28),
+                              fontSize: 14.sp,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            border: InputBorder.none,
+                            isDense: true,
+                            contentPadding: EdgeInsets.zero,
+                          ),
+                        ),
+                      ),
+                      Container(
+                        height: 22.h,
+                        width: 1.w,
+                        color: Colors.white.withOpacity(0.1),
+                        margin: EdgeInsets.symmetric(horizontal: 12.w),
+                      ),
+                      Obx(() => GestureDetector(
+                        onTap: () => _showPicker(
+                          "Select Weight Unit",
+                          controller.weightUnits,
+                          (val) => controller.shippingWeightUnit.value = val,
+                        ),
+                        child: Container(
+                          padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 7.h),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF8B9BFF).withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(10.r),
+                            border: Border.all(
+                              color: const Color(0xFF8B9BFF).withOpacity(0.25),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                controller.shippingWeightUnit.value.toUpperCase(),
+                                style: TextStyle(
+                                  color: const Color(0xFF8B9BFF),
+                                  fontSize: 12.sp,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              SizedBox(width: 4.w),
+                              Icon(
+                                Icons.keyboard_arrow_down_rounded,
+                                color: const Color(0xFF8B9BFF),
+                                size: 16.sp,
+                              ),
+                            ],
+                          ),
+                        ),
+                      )),
+                    ],
+                  ),
+                ),
+                SizedBox(height: 6.h),
+                Text(
+                  "Required for automated shipping label & postage calculation.",
+                  style: TextStyle(
+                    color: Colors.white38,
+                    fontSize: 11.sp,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
                 SizedBox(height: 28.h),
 
@@ -195,26 +295,27 @@ class CreateTradeScreen extends GetView<CreateTradeController> {
                             "e.g. 4500",
                             controller.buyNowPriceController,
                             keyboardType: TextInputType.number,
+                            prefixText: "\$",
                           ),
                           SizedBox(height: 12.h),
                           Container(
-                            padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+                            padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
                             decoration: BoxDecoration(
                               color: const Color(0xFF8B9BFF).withOpacity(0.06),
-                              borderRadius: BorderRadius.circular(12.r),
+                              borderRadius: BorderRadius.circular(14.r),
                               border: Border.all(
-                                color: const Color(0xFF8B9BFF).withOpacity(0.12),
+                                color: const Color(0xFF8B9BFF).withOpacity(0.15),
                               ),
                             ),
                             child: Row(
                               children: [
-                                Icon(Icons.bolt_rounded, color: const Color(0xFF8B9BFF), size: 14.sp),
+                                Icon(Icons.bolt_rounded, color: const Color(0xFF8B9BFF), size: 16.sp),
                                 SizedBox(width: 8.w),
                                 Expanded(
                                   child: Text(
                                     "Buyers can instantly purchase your item at this price without trade negotiation.",
                                     style: TextStyle(
-                                      color: const Color(0xFF8B9BFF).withOpacity(0.85),
+                                      color: const Color(0xFF8B9BFF).withOpacity(0.9),
                                       fontSize: 11.sp,
                                       fontWeight: FontWeight.w600,
                                       height: 1.4,
@@ -222,6 +323,91 @@ class CreateTradeScreen extends GetView<CreateTradeController> {
                                   ),
                                 ),
                               ],
+                            ),
+                          ),
+                        ],
+                      )
+                    : const SizedBox.shrink()),
+
+                SizedBox(height: 28.h),
+
+                // ── Allow Custom Offers (Feature 2) ─────────────────────────
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            "Allow custom offers",
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 14.sp,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          SizedBox(height: 3.h),
+                          Text(
+                            "Let buyers submit custom price offers for this item",
+                            style: TextStyle(
+                              color: Colors.white38,
+                              fontSize: 12.sp,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Obx(() => GestureDetector(
+                      onTap: () => controller.allowOffers.toggle(),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        width: 48.w,
+                        height: 26.h,
+                        decoration: BoxDecoration(
+                          color: controller.allowOffers.value
+                              ? const Color(0xFF8B9BFF)
+                              : Colors.white12,
+                          borderRadius: BorderRadius.circular(13.r),
+                        ),
+                        child: AnimatedAlign(
+                          duration: const Duration(milliseconds: 200),
+                          alignment: controller.allowOffers.value
+                              ? Alignment.centerRight
+                              : Alignment.centerLeft,
+                          child: Container(
+                            margin: EdgeInsets.all(3.r),
+                            width: 20.r,
+                            height: 20.r,
+                            decoration: const BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        ),
+                      ),
+                    )),
+                  ],
+                ),
+                Obx(() => controller.allowOffers.value
+                    ? Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SizedBox(height: 16.h),
+                          _buildLabel("Minimum acceptable offer (\$)"),
+                          _buildTextField(
+                            "Accept offers over e.g. 3500",
+                            controller.minOfferAmountController,
+                            keyboardType: TextInputType.number,
+                            prefixText: "\$",
+                          ),
+                          SizedBox(height: 6.h),
+                          Text(
+                            "Offers below this minimum price will be automatically rejected.",
+                            style: TextStyle(
+                              color: Colors.white38,
+                              fontSize: 11.sp,
+                              fontWeight: FontWeight.w500,
                             ),
                           ),
                         ],
@@ -247,8 +433,10 @@ class CreateTradeScreen extends GetView<CreateTradeController> {
               _buildInputContainer([
                 _buildLabel("What you're looking for"),
                 _buildTextField(
-                  "Seeking modern horology\nor rare photography",
+                  "Seeking modern horology or rare photography...",
                   controller.desiredItemController,
+                  maxLines: 2,
+                  prefixIcon: Icon(Icons.search_rounded, color: const Color(0xFF8B9BFF), size: 18.sp),
                 ),
                 SizedBox(height: 24.h),
                 Obx(
@@ -260,6 +448,7 @@ class CreateTradeScreen extends GetView<CreateTradeController> {
                       controller.targetCategories,
                       (val) => controller.setTargetCategory(val),
                     ),
+                    leadingIcon: Icons.filter_list_rounded,
                   ),
                 ),
                 SizedBox(height: 24.h),
@@ -271,15 +460,17 @@ class CreateTradeScreen extends GetView<CreateTradeController> {
                         "Min",
                         controller.minValueController,
                         keyboardType: TextInputType.number,
+                        prefixText: "\$",
                       ),
                     ),
                     Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 16.w),
+                      padding: EdgeInsets.symmetric(horizontal: 14.w),
                       child: Text(
                         "—",
                         style: TextStyle(
-                          color: Colors.white24,
-                          fontSize: 16.sp,
+                          color: Colors.white38,
+                          fontSize: 18.sp,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
                     ),
@@ -288,6 +479,7 @@ class CreateTradeScreen extends GetView<CreateTradeController> {
                         "Max",
                         controller.maxValueController,
                         keyboardType: TextInputType.number,
+                        prefixText: "\$",
                       ),
                     ),
                   ],
@@ -503,10 +695,14 @@ class CreateTradeScreen extends GetView<CreateTradeController> {
 
   Widget _buildInputContainer(List<Widget> children) {
     return Container(
-      padding: EdgeInsets.all(24.r),
+      padding: EdgeInsets.all(22.r),
       decoration: BoxDecoration(
         color: const Color(0xFF11111A),
-        borderRadius: BorderRadius.circular(32.r),
+        borderRadius: BorderRadius.circular(28.r),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.05),
+          width: 1,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -518,13 +714,27 @@ class CreateTradeScreen extends GetView<CreateTradeController> {
   Widget _buildLabel(String label) {
     return Padding(
       padding: EdgeInsets.only(bottom: 10.h),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: Colors.white54,
-          fontSize: 13.sp,
-          fontWeight: FontWeight.w600,
-        ),
+      child: Row(
+        children: [
+          Container(
+            width: 3.5.w,
+            height: 13.h,
+            decoration: BoxDecoration(
+              color: const Color(0xFF8B9BFF),
+              borderRadius: BorderRadius.circular(2.r),
+            ),
+          ),
+          SizedBox(width: 8.w),
+          Text(
+            label,
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.75),
+              fontSize: 13.sp,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.2,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -534,67 +744,151 @@ class CreateTradeScreen extends GetView<CreateTradeController> {
     TextEditingController textController, {
     int maxLines = 1,
     TextInputType keyboardType = TextInputType.text,
+    Widget? prefixIcon,
+    String? prefixText,
+    Widget? suffixIcon,
+    String? suffixText,
   }) {
-    return TextField(
-      controller: textController,
-      maxLines: maxLines,
-      keyboardType: keyboardType,
-      style: TextStyle(
-        color: Colors.white,
-        fontSize: 15.sp,
-        fontWeight: FontWeight.w600,
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF161622),
+        borderRadius: BorderRadius.circular(16.r),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.08),
+          width: 1.2,
+        ),
       ),
-      decoration: InputDecoration(
-        hintText: hint,
-        hintStyle: TextStyle(
-          color: Colors.white24,
-          fontSize: 15.sp,
-          fontWeight: FontWeight.w600,
-        ),
-        enabledBorder: const UnderlineInputBorder(
-          borderSide: BorderSide(color: Colors.white12),
-        ),
-        focusedBorder: const UnderlineInputBorder(
-          borderSide: BorderSide(color: Color(0xFF8B9BFF)),
-        ),
-        contentPadding: EdgeInsets.symmetric(vertical: 8.h),
+      padding: EdgeInsets.symmetric(
+        horizontal: 16.w,
+        vertical: maxLines > 1 ? 12.h : 2.h,
+      ),
+      child: Row(
+        crossAxisAlignment: maxLines > 1 ? CrossAxisAlignment.start : CrossAxisAlignment.center,
+        children: [
+          if (prefixIcon != null) ...[
+            Padding(
+              padding: EdgeInsets.only(right: 10.w, top: maxLines > 1 ? 3.h : 0),
+              child: prefixIcon,
+            ),
+          ],
+          if (prefixText != null) ...[
+            Padding(
+              padding: EdgeInsets.only(right: 6.w),
+              child: Text(
+                prefixText,
+                style: TextStyle(
+                  color: const Color(0xFF8B9BFF),
+                  fontSize: 16.sp,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ],
+          Expanded(
+            child: TextField(
+              controller: textController,
+              maxLines: maxLines,
+              keyboardType: keyboardType,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 14.sp,
+                fontWeight: FontWeight.w600,
+              ),
+              decoration: InputDecoration(
+                hintText: hint,
+                hintStyle: TextStyle(
+                  color: Colors.white.withOpacity(0.28),
+                  fontSize: 14.sp,
+                  fontWeight: FontWeight.w500,
+                ),
+                border: InputBorder.none,
+                isDense: true,
+                contentPadding: EdgeInsets.symmetric(vertical: 12.h),
+              ),
+            ),
+          ),
+          if (suffixText != null) ...[
+            Padding(
+              padding: EdgeInsets.only(left: 6.w),
+              child: Text(
+                suffixText,
+                style: TextStyle(
+                  color: Colors.white38,
+                  fontSize: 13.sp,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+          if (suffixIcon != null) ...[
+            Padding(
+              padding: EdgeInsets.only(left: 10.w),
+              child: suffixIcon,
+            ),
+          ],
+        ],
       ),
     );
   }
 
-  Widget _buildSelectable(String label, String value, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildLabel(label),
-          Container(
-            padding: EdgeInsets.only(bottom: 8.h),
+  Widget _buildSelectable(
+    String label,
+    String value,
+    VoidCallback onTap, {
+    IconData? leadingIcon,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildLabel(label),
+        GestureDetector(
+          onTap: onTap,
+          child: Container(
+            height: 52.h,
+            padding: EdgeInsets.symmetric(horizontal: 14.w),
             decoration: BoxDecoration(
-              border: Border(bottom: BorderSide(color: Colors.white)),
+              color: const Color(0xFF161622),
+              borderRadius: BorderRadius.circular(16.r),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.08),
+                width: 1.2,
+              ),
             ),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  value,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 15.sp,
-                    fontWeight: FontWeight.w600,
+                if (leadingIcon != null) ...[
+                  Icon(leadingIcon, color: const Color(0xFF8B9BFF), size: 18.sp),
+                  SizedBox(width: 10.w),
+                ],
+                Expanded(
+                  child: Text(
+                    value,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 14.sp,
+                      fontWeight: FontWeight.w700,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                Icon(
-                  Icons.keyboard_arrow_down,
-                  color: Colors.white24,
-                  size: 20.sp,
+                Container(
+                  padding: EdgeInsets.all(4.r),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.06),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.keyboard_arrow_down_rounded,
+                    color: const Color(0xFF8B9BFF),
+                    size: 18.sp,
+                  ),
                 ),
               ],
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 

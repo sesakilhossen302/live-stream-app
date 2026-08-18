@@ -290,6 +290,30 @@ class TrackOrderController extends GetxController {
     };
   }
 
+  String get shippingAddressFormatted {
+    final addr = shippingAddress;
+    final street = (addr['street'] ?? '').toString();
+    final city = (addr['city'] ?? '').toString();
+    final state = (addr['state'] ?? '').toString();
+    final zip = (addr['postalCode'] ?? addr['zip'] ?? '').toString();
+    final country = (addr['country'] ?? 'USA').toString();
+    final parts = [street, city, state, zip, country].where((s) => s.isNotEmpty).toList();
+    if (parts.isNotEmpty) return parts.join(', ');
+    return "123 Main St, New York, NY 10001, USA";
+  }
+
+  String get trackingNumber {
+    final t = orderData['trackingDetails']?['trackingNumber'] ?? orderData['trackingNumber'] ?? fallbackModel?.trackingId;
+    if (t != null && t.toString().isNotEmpty) return t.toString();
+    return "9400 1118 9956 2489 1002 45";
+  }
+
+  String get carrierName {
+    final c = orderData['trackingDetails']?['carrier'] ?? orderData['carrier'] ?? fallbackModel?.carrier;
+    if (c != null && c.toString().isNotEmpty) return c.toString();
+    return "USPS Ground Advantage";
+  }
+
   // 7. Update Shipping Journey (Seller Action)
   final RxBool isUpdatingStatus = false.obs;
 

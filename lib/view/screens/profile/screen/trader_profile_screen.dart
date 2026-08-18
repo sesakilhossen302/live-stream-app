@@ -35,6 +35,8 @@ class TraderProfileScreen extends GetView<TraderProfileController> {
                 _buildStatsRow(),
                 SizedBox(height: 32.h),
                 _buildActionButtons(),
+                SizedBox(height: 32.h),
+                Obx(() => _buildUpcomingShowsSection()),
                 SizedBox(height: 40.h),
                 Obx(() => _buildTabs()),
                 SizedBox(height: 24.h),
@@ -1087,4 +1089,292 @@ class TraderProfileScreen extends GetView<TraderProfileController> {
       ),
     );
   }
+
+  // ─── UPCOMING SHOWS SECTION (Feature 5) ──────────────────────────────────
+  Widget _buildUpcomingShowsSection() {
+    if (controller.isUpcomingShowsLoading.value && controller.upcomingShows.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    if (controller.upcomingShows.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: 24.w),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 4.w,
+                    height: 16.h,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF8B9BFF),
+                      borderRadius: BorderRadius.circular(2.r),
+                    ),
+                  ),
+                  SizedBox(width: 8.w),
+                  Text(
+                    "UPCOMING SHOWS",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 14.sp,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 1.1,
+                    ),
+                  ),
+                  SizedBox(width: 8.w),
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF8B9BFF).withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(10.r),
+                    ),
+                    child: Text(
+                      "${controller.upcomingShows.length}",
+                      style: TextStyle(
+                        color: const Color(0xFF8B9BFF),
+                        fontSize: 11.sp,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              GestureDetector(
+                onTap: () => Get.toNamed(AppRoute.allLiveShows),
+                child: Text(
+                  "View all",
+                  style: TextStyle(
+                    color: const Color(0xFF8B9BFF),
+                    fontSize: 13.sp,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        SizedBox(height: 16.h),
+        SizedBox(
+          height: 230.h,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
+            padding: EdgeInsets.symmetric(horizontal: 20.w),
+            itemCount: controller.upcomingShows.length,
+            itemBuilder: (context, index) {
+              final show = controller.upcomingShows[index];
+              return _buildShowCard(show);
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildShowCard(Map<String, dynamic> show) {
+    final String showId = (show['id'] ?? show['_id'] ?? '').toString();
+    final String title = (show['title'] ?? show['name'] ?? 'Upcoming Live Stream').toString();
+    final String scheduledTime = (show['scheduledTime'] ?? show['scheduledAt'] ?? 'Tomorrow, 8:00 PM').toString();
+    final String thumbnail = (show['thumbnail'] ?? show['coverImage'] ?? show['image'] ?? '').toString();
+    final String category = (show['category'] ?? 'Collectibles').toString();
+    final bool isLive = show['isLive'] == true || show['status'] == 'live';
+
+    return GestureDetector(
+      onTap: () {
+        if (isLive) {
+          Get.toNamed(AppRoute.viewerLive, arguments: show);
+        } else {
+          controller.toggleReminder(showId);
+        }
+      },
+      child: Container(
+        width: 250.w,
+        margin: EdgeInsets.only(right: 14.w),
+        decoration: BoxDecoration(
+          color: const Color(0xFF161622),
+          borderRadius: BorderRadius.circular(20.r),
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.08),
+            width: 1.2,
+          ),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Thumbnail with Badges
+            Stack(
+              children: [
+                SizedBox(
+                  height: 115.h,
+                  width: double.infinity,
+                  child: thumbnail.isNotEmpty
+                      ? _buildDetailsProductImage(thumbnail, fit: BoxFit.cover)
+                      : Container(
+                          decoration: const BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [Color(0xFF2A2A40), Color(0xFF161622)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                          ),
+                          child: Center(
+                            child: Icon(Icons.live_tv_rounded, color: Colors.white24, size: 36.sp),
+                          ),
+                        ),
+                ),
+                // Gradient overlay for text readability
+                Positioned.fill(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          Colors.black.withValues(alpha: 0.5),
+                          Colors.transparent,
+                          Colors.black.withValues(alpha: 0.6),
+                        ],
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                      ),
+                    ),
+                  ),
+                ),
+                // Status Badge (SCHEDULED or LIVE)
+                Positioned(
+                  top: 10.h,
+                  left: 10.w,
+                  child: Container(
+                    padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+                    decoration: BoxDecoration(
+                      color: isLive ? const Color(0xFFFF4B6E) : Colors.black.withValues(alpha: 0.75),
+                      borderRadius: BorderRadius.circular(8.r),
+                      border: Border.all(
+                        color: isLive ? Colors.transparent : Colors.white.withValues(alpha: 0.2),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 6.r,
+                          height: 6.r,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: isLive ? Colors.white : const Color(0xFF8B9BFF),
+                          ),
+                        ),
+                        SizedBox(width: 5.w),
+                        Text(
+                          isLive ? "LIVE NOW" : "SCHEDULED",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 9.sp,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                // Reminder Bell Button
+                Positioned(
+                  top: 10.h,
+                  right: 10.w,
+                  child: Obx(() {
+                    final isReminded = controller.remindedShowIds.contains(showId);
+                    return GestureDetector(
+                      onTap: () => controller.toggleReminder(showId),
+                      child: Container(
+                        padding: EdgeInsets.all(6.r),
+                        decoration: BoxDecoration(
+                          color: isReminded ? const Color(0xFF8B9BFF) : Colors.black.withValues(alpha: 0.6),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: isReminded ? Colors.transparent : Colors.white.withValues(alpha: 0.2),
+                          ),
+                        ),
+                        child: Icon(
+                          isReminded ? Icons.notifications_active_rounded : Icons.notifications_none_rounded,
+                          color: isReminded ? const Color(0xFF0F172A) : Colors.white,
+                          size: 14.sp,
+                        ),
+                      ),
+                    );
+                  }),
+                ),
+                // Category pill bottom-left on thumbnail
+                Positioned(
+                  bottom: 8.h,
+                  left: 10.w,
+                  child: Container(
+                    padding: EdgeInsets.symmetric(horizontal: 7.w, vertical: 2.h),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF8B9BFF).withValues(alpha: 0.3),
+                      borderRadius: BorderRadius.circular(6.r),
+                    ),
+                    child: Text(
+                      category.toUpperCase(),
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 8.sp,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+
+            // Card Body (Title & Time)
+            Padding(
+              padding: EdgeInsets.all(12.r),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 13.sp,
+                      fontWeight: FontWeight.w700,
+                      height: 1.3,
+                    ),
+                  ),
+                  SizedBox(height: 8.h),
+                  Row(
+                    children: [
+                      Icon(Icons.access_time_rounded, color: const Color(0xFF8B9BFF), size: 13.sp),
+                      SizedBox(width: 5.w),
+                      Expanded(
+                        child: Text(
+                          scheduledTime,
+                          style: TextStyle(
+                            color: const Color(0xFF8B9BFF),
+                            fontSize: 11.sp,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
+

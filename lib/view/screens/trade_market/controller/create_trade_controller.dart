@@ -20,6 +20,15 @@ class CreateTradeController extends GetxController {
   final buyNowPriceController = TextEditingController(); // Optional instant buy price
   final RxBool enableBuyNow = false.obs; // Toggle for buy now price
 
+  // Shipping Weight Fields (Feature 1)
+  final shippingWeightController = TextEditingController();
+  final RxString shippingWeightUnit = "lbs".obs;
+  final weightUnits = ["lbs", "oz", "kg"];
+
+  // Custom Offer Settings (Feature 2)
+  final RxBool allowOffers = true.obs; // Toggle for accepting custom offers
+  final minOfferAmountController = TextEditingController(); // Minimum acceptable offer amount
+
   var selectedCategory = "Streetwear".obs;
   var selectedCondition = "Mint".obs;
 
@@ -242,6 +251,14 @@ class CreateTradeController extends GetxController {
           ? double.tryParse(buyNowRaw)
           : null;
 
+      final String shippingWeightRaw = shippingWeightController.text.trim();
+      final double shippingWeightParsed = double.tryParse(shippingWeightRaw) ?? 0.0;
+
+      final String minOfferRaw = minOfferAmountController.text.trim();
+      final double? minOfferParsed = allowOffers.value && minOfferRaw.isNotEmpty
+          ? double.tryParse(minOfferRaw)
+          : null;
+
       final selectedCategoryId = categoryNameToId[selectedCategory.value] ?? selectedCategory.value;
 
       final Map<String, dynamic> requestBody = {
@@ -251,6 +268,10 @@ class CreateTradeController extends GetxController {
         "condition": selectedCondition.value,
         "estValue": double.tryParse(estValue) ?? 0.0,
         if (buyNowParsed != null) "buyNowPrice": buyNowParsed,
+        "allowOffers": allowOffers.value,
+        if (minOfferParsed != null) "minOfferAmount": minOfferParsed,
+        if (shippingWeightParsed > 0) "shippingWeight": shippingWeightParsed,
+        "shippingWeightUnit": shippingWeightUnit.value,
         "allowTrade": true,
         "sellerId": userId,
         "images": imageUrls,
@@ -312,6 +333,8 @@ class CreateTradeController extends GetxController {
     descriptionController.dispose();
     estValueController.dispose();
     buyNowPriceController.dispose();
+    shippingWeightController.dispose();
+    minOfferAmountController.dispose();
     desiredItemController.dispose();
     minValueController.dispose();
     maxValueController.dispose();

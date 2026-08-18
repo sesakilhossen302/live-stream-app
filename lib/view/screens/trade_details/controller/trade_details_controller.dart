@@ -17,6 +17,7 @@ class TradeDetailsController extends GetxController {
   var currentImageIndex = 0.obs;
   final RxMap<String, dynamic> product = <String, dynamic>{}.obs;
   final RxBool isOrdering = false.obs;
+  final RxBool isSubmittingOffer = false.obs;
 
   @override
   void onInit() {
@@ -296,6 +297,105 @@ class TradeDetailsController extends GetxController {
       } catch (_) {}
     } catch (e) {
       Get.log("Error creating order record: $e");
+    }
+  }
+
+  // ── Custom Price Offer (Feature 2) ────────────────────────────────────────
+  Future<bool> sendCustomPriceOffer({
+    required double offerAmount,
+    String note = '',
+  }) async {
+    isSubmittingOffer.value = true;
+    try {
+      final String senderId = SharePrefsHelper.getString(SharePrefsHelper.userIdKey);
+      final seller = product['sellerId'];
+      final String receiverId = (seller is Map)
+          ? (seller['_id'] ?? seller['id'] ?? '')
+          : seller.toString();
+      final String productId = (product['_id'] ?? product['id'] ?? '').toString();
+
+      if (senderId.isEmpty) {
+        Get.snackbar(
+          "Authentication Required",
+          "Please sign in to make an offer.",
+          backgroundColor: Colors.red.withOpacity(0.8),
+          colorText: Colors.white,
+          snackPosition: SnackPosition.BOTTOM,
+        );
+        return false;
+      }
+
+      // Check minOfferAmount validation (Feature 2)
+      final dynamic minOfferRaw = product['minOfferAmount'];
+      if (minOfferRaw != null) {
+        final double minOffer = double.tryParse(minOfferRaw.toString()) ?? 0.0;
+        if (minOffer > 0 && offerAmount < minOffer) {
+          Get.snackbar(
+            "Offer Too Low",
+            "The seller has set a minimum offer threshold of \$${minOffer.toStringAsFixed(0)}.",
+            backgroundColor: Colors.red.withOpacity(0.8),
+            colorText: Colors.white,
+            snackPosition: SnackPosition.BOTTOM,
+          );
+          return false;
+        }
+      }
+
+      final payload = {
+        "senderId": senderId,
+        "receiverId": receiverId,
+        "receiverProductId": productId,
+        "offerAmount": offerAmount,
+        "cashSupplement": offerAmount,
+        "offerType": "price_offer",
+        "note": note,
+      };
+
+      final response = await _apiClient.postData("/trades/offer", payload);
+
+      // Emit real-time notification to seller via socket
+      try {
+        if (Get.isRegistered<SocketService>()) {
+          final socket = Get.find<SocketService>();
+          socket.emitEvent('trade_offer', {
+            "senderId": senderId,
+            "receiverId": receiverId,
+            "productId": productId,
+            "offerAmount": offerAmount,
+            "productTitle": product['title'] ?? '',
+            "message": "NEW OFFER RECEIVED 🎁: \$${offerAmount.toStringAsFixed(0)} on ${product['title'] ?? 'item'}",
+          });
+        }
+      } catch (_) {}
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return true;
+      } else {
+        String errMsg = "Failed to submit offer.";
+        try {
+          final data = jsonDecode(response.body);
+          errMsg = data['message'] ?? errMsg;
+        } catch (_) {}
+        Get.snackbar(
+          "Error",
+          errMsg,
+          backgroundColor: Colors.red.withOpacity(0.8),
+          colorText: Colors.white,
+          snackPosition: SnackPosition.BOTTOM,
+        );
+        return false;
+      }
+    } catch (e) {
+      Get.snackbar(
+        "Error",
+        "Unexpected error: $e",
+        backgroundColor: Colors.red.withOpacity(0.8),
+        colorText: Colors.white,
+        snackPosition: SnackPosition.BOTTOM,
+      );
+      return false;
+    } finally {
+      isSubmittingOffer.value = false;
     }
   }
 }

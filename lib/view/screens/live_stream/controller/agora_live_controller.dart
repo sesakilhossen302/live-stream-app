@@ -230,33 +230,6 @@ class AgoraLiveController extends GetxController with WidgetsBindingObserver {
     });
   }
 
-  void sendHypeReaction(String emojiStr) {
-    triggerFloatingEmoji(emojiStr);
-
-    try {
-      final s = Get.find<SocketService>();
-      s.emitEvent("new message", {
-        "chat": streamId.value,
-        "chatId": streamId.value,
-        "content": emojiStr,
-        "isHypeReaction": true,
-        "reactionEmoji": emojiStr,
-        "isLiveStream": true,
-      });
-    } catch (_) {}
-
-    if (engine != null && _dataStreamId != null) {
-      try {
-        final payload = jsonEncode({"type": "hype_reaction", "emoji": emojiStr});
-        engine!.sendStreamMessage(
-          streamId: _dataStreamId!,
-          data: Uint8List.fromList(utf8.encode(payload)),
-          length: payload.length,
-        );
-      } catch (_) {}
-    }
-  }
-
   Future<void> fetchProductReservePrice(String productId) async {
     if (productId.isEmpty) return;
     try {
@@ -2162,6 +2135,7 @@ class AgoraLiveController extends GetxController with WidgetsBindingObserver {
     isLiked.toggle();
     if (isLiked.value) {
       likeCount.value++;
+      triggerFloatingHeart();
     } else {
       if (likeCount.value > 0) likeCount.value--;
     }

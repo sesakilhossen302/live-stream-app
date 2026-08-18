@@ -650,6 +650,41 @@ class _HostLiveScreenState extends State<HostLiveScreen> {
                 ),
               ],
             ),
+            SizedBox(height: 10.h),
+            // Quick Timer Selector Chips (Feature 3)
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [5, 10, 15, 30, 60].map((t) {
+                  return GestureDetector(
+                    onTap: () => durationCtrl.text = t.toString(),
+                    child: Container(
+                      margin: EdgeInsets.only(right: 8.w),
+                      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h),
+                      decoration: BoxDecoration(
+                        color: t <= 15
+                            ? const Color(0xFF8B9BFF).withValues(alpha: 0.15)
+                            : Colors.white.withValues(alpha: 0.05),
+                        borderRadius: BorderRadius.circular(10.r),
+                        border: Border.all(
+                          color: t <= 15
+                              ? const Color(0xFF8B9BFF).withValues(alpha: 0.4)
+                              : Colors.white12,
+                        ),
+                      ),
+                      child: Text(
+                        t <= 15 ? "${t}s ⚡" : "${t}s",
+                        style: TextStyle(
+                          color: t <= 15 ? const Color(0xFF8B9BFF) : Colors.white70,
+                          fontSize: 11.sp,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
             SizedBox(height: 20.h),
             Text("Select Product to Auction", style: TextStyle(color: Colors.white60, fontSize: 13.sp, fontWeight: FontWeight.w700)),
             SizedBox(height: 12.h),

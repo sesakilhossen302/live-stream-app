@@ -241,7 +241,9 @@ class TradeDetailsScreen extends GetView<TradeDetailsController> {
                   double.tryParse(buyNowPriceVal.toString()) != null &&
                   double.parse(buyNowPriceVal.toString()) > 0;
               final allowTradeVal = product['allowTrade'];
+              final allowOffersVal = product['allowOffers'];
               final hasTrade = allowTradeVal == true || allowTradeVal == 'true' || allowTradeVal == null;
+              final allowsOffers = allowOffersVal == true || allowOffersVal == 'true' || (allowOffersVal == null && (hasTrade || hasBuyNow));
 
               return Positioned(
                 bottom: 0,
@@ -258,10 +260,10 @@ class TradeDetailsScreen extends GetView<TradeDetailsController> {
                   ),
                   child: Row(
                     children: [
-                      if (hasTrade)
+                      if (allowsOffers || hasTrade)
                         Expanded(
                           child: GestureDetector(
-                            onTap: () => Get.toNamed('/make_offer', arguments: product),
+                            onTap: () => _showMakeOfferBottomSheet(context, product, controller),
                             child: Container(
                               height: 56.h,
                               decoration: BoxDecoration(
@@ -284,7 +286,7 @@ class TradeDetailsScreen extends GetView<TradeDetailsController> {
                             ),
                           ),
                         ),
-                      if (hasTrade && hasBuyNow) SizedBox(width: 16.w),
+                      if ((allowsOffers || hasTrade) && hasBuyNow) SizedBox(width: 16.w),
                       if (hasBuyNow)
                         Expanded(
                           child: GestureDetector(
@@ -509,9 +511,28 @@ class TradeDetailsScreen extends GetView<TradeDetailsController> {
     if (estValue != null && estValue.toString().isNotEmpty) specs.add(_SpecItem("Est. Value", "\$$estValue", Icons.attach_money_rounded));
     if (buyNowPrice != null && double.tryParse(buyNowPrice.toString()) != null && double.parse(buyNowPrice.toString()) > 0)
       specs.add(_SpecItem("Buy Now Price", "\$$buyNowPrice", Icons.shopping_bag_outlined));
+    
+    // Shipping Weight (Feature 1)
+    final shippingWeight = product['shippingWeight'];
+    final shippingWeightUnit = product['shippingWeightUnit'] ?? 'lbs';
+    if (shippingWeight != null && shippingWeight.toString().isNotEmpty && (double.tryParse(shippingWeight.toString()) ?? 0) > 0) {
+      specs.add(_SpecItem("Shipping Weight", "$shippingWeight $shippingWeightUnit", Icons.scale_outlined));
+    }
+
     specs.add(_SpecItem("Trade Allowed", allowTrade == true ? "Yes" : "No", Icons.swap_horiz_rounded));
-    if (minValue != null && minValue.toString().isNotEmpty) specs.add(_SpecItem("Min Offer Value", "\$$minValue", Icons.arrow_downward_rounded));
-    if (maxValue != null && maxValue.toString().isNotEmpty) specs.add(_SpecItem("Max Offer Value", "\$$maxValue", Icons.arrow_upward_rounded));
+    
+    // Custom Offers & Min Offer Amount (Feature 2)
+    final allowOffers = product['allowOffers'];
+    if (allowOffers != null) {
+      specs.add(_SpecItem("Custom Offers", (allowOffers == true || allowOffers == 'true') ? "Accepted" : "Disabled", Icons.local_offer_outlined));
+    }
+    final minOfferAmount = product['minOfferAmount'];
+    if (minOfferAmount != null && (double.tryParse(minOfferAmount.toString()) ?? 0) > 0) {
+      specs.add(_SpecItem("Min Acceptable Offer", "\$$minOfferAmount", Icons.price_check_rounded));
+    }
+
+    if (minValue != null && minValue.toString().isNotEmpty) specs.add(_SpecItem("Min Trade Value", "\$$minValue", Icons.arrow_downward_rounded));
+    if (maxValue != null && maxValue.toString().isNotEmpty) specs.add(_SpecItem("Max Trade Value", "\$$maxValue", Icons.arrow_upward_rounded));
     if (targetCategory.isNotEmpty) specs.add(_SpecItem("Target Category", targetCategory, Icons.filter_list_rounded));
     if (createdAt.isNotEmpty) {
       try {
@@ -1013,6 +1034,477 @@ class TradeDetailsScreen extends GetView<TradeDetailsController> {
     return Image.network(cleanUrl, fit: fit,
       loadingBuilder: (_, child, progress) => progress == null ? child : Container(color: const Color(0xFF1A1A2E), child: Center(child: SizedBox(width: 22.r, height: 22.r, child: CircularProgressIndicator(strokeWidth: 2, color: const Color(0xFF8B9BFF).withOpacity(0.4))))),
       errorBuilder: (_, __, ___) => Container(color: const Color(0xFF1A1A2E), child: Center(child: Icon(Icons.image_not_supported_outlined, color: Colors.white12, size: 32.sp))));
+  }
+
+  // ── Make Offer Dialog / BottomSheet (Feature 2) ──────────────────────────
+  void _showMakeOfferBottomSheet(
+    BuildContext context,
+    Map<String, dynamic> product,
+    TradeDetailsController controller,
+  ) {
+    final title = product['title'] ?? 'Item';
+    final dynamic rawImages = product['images'];
+    String imgUrl = '';
+    if (rawImages is List && rawImages.isNotEmpty) {
+      imgUrl = rawImages.first.toString();
+    } else if (rawImages is String && rawImages.isNotEmpty) {
+      imgUrl = rawImages;
+    }
+
+    final dynamic buyNowRaw = product['buyNowPrice'] ?? product['price'] ?? product['estValue'];
+    final double basePrice = double.tryParse(buyNowRaw?.toString() ?? '0') ?? 0.0;
+
+    final dynamic minOfferRaw = product['minOfferAmount'];
+    final double minOfferAmount = double.tryParse(minOfferRaw?.toString() ?? '0') ?? 0.0;
+
+    final TextEditingController offerInputCtrl = TextEditingController(
+      text: basePrice > 0 ? (basePrice * 0.9).toStringAsFixed(0) : "",
+    );
+    final TextEditingController noteInputCtrl = TextEditingController();
+    final RxString errorMessage = "".obs;
+
+    void validateOffer(String text) {
+      final double val = double.tryParse(text.trim()) ?? 0.0;
+      if (val <= 0) {
+        errorMessage.value = "Please enter a valid offer amount.";
+      } else if (minOfferAmount > 0 && val < minOfferAmount) {
+        errorMessage.value = "Seller accepts offers over \$${minOfferAmount.toStringAsFixed(0)}.";
+      } else {
+        errorMessage.value = "";
+      }
+    }
+
+    if (offerInputCtrl.text.isNotEmpty) {
+      validateOffer(offerInputCtrl.text);
+    }
+
+    Get.bottomSheet(
+      Container(
+        padding: EdgeInsets.only(
+          left: 24.w,
+          right: 24.w,
+          top: 20.h,
+          bottom: MediaQuery.of(context).viewInsets.bottom + 24.h,
+        ),
+        decoration: BoxDecoration(
+          color: const Color(0xFF161622),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(32.r)),
+          border: Border.all(color: Colors.white.withOpacity(0.08)),
+        ),
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40.w,
+                  height: 4.h,
+                  decoration: BoxDecoration(
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(2.r),
+                  ),
+                ),
+              ),
+              SizedBox(height: 18.h),
+
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    "Make an Offer",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 20.sp,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () => Get.back(),
+                    child: Container(
+                      padding: EdgeInsets.all(6.r),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.06),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(Icons.close, color: Colors.white70, size: 18.sp),
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 16.h),
+
+              // Product card
+              Container(
+                padding: EdgeInsets.all(12.r),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1E1E2C),
+                  borderRadius: BorderRadius.circular(16.r),
+                  border: Border.all(color: Colors.white.withOpacity(0.05)),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 50.w,
+                      height: 50.w,
+                      clipBehavior: Clip.antiAlias,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(10.r),
+                        color: Colors.black26,
+                      ),
+                      child: _buildDetailsProductImage(imgUrl),
+                    ),
+                    SizedBox(width: 14.w),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            title,
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 14.sp,
+                              fontWeight: FontWeight.w800,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          SizedBox(height: 4.h),
+                          Text(
+                            basePrice > 0 ? "Listed Price: \$${basePrice.toStringAsFixed(0)}" : "Open Trade",
+                            style: TextStyle(
+                              color: const Color(0xFF8B9BFF),
+                              fontSize: 12.sp,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              if (minOfferAmount > 0) ...[
+                SizedBox(height: 12.h),
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF8B9BFF).withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(12.r),
+                    border: Border.all(color: const Color(0xFF8B9BFF).withOpacity(0.2)),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.info_outline_rounded, color: const Color(0xFF8B9BFF), size: 16.sp),
+                      SizedBox(width: 8.w),
+                      Expanded(
+                        child: Text(
+                          "Seller accepts offers over \$${minOfferAmount.toStringAsFixed(0)}",
+                          style: TextStyle(
+                            color: const Color(0xFF8B9BFF),
+                            fontSize: 12.sp,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+
+              SizedBox(height: 20.h),
+              Text(
+                "Your Offer Amount (\$)",
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: 13.sp,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              SizedBox(height: 8.h),
+
+              Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1E1E2C),
+                  borderRadius: BorderRadius.circular(16.r),
+                  border: Border.all(
+                    color: const Color(0xFF8B9BFF).withOpacity(0.3),
+                  ),
+                ),
+                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 4.h),
+                child: Row(
+                  children: [
+                    Text(
+                      "\$",
+                      style: TextStyle(
+                        color: const Color(0xFF8B9BFF),
+                        fontSize: 22.sp,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    SizedBox(width: 8.w),
+                    Expanded(
+                      child: TextField(
+                        controller: offerInputCtrl,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 20.sp,
+                          fontWeight: FontWeight.w900,
+                        ),
+                        onChanged: validateOffer,
+                        decoration: InputDecoration(
+                          hintText: "Enter amount",
+                          hintStyle: TextStyle(
+                            color: Colors.white24,
+                            fontSize: 18.sp,
+                          ),
+                          border: InputBorder.none,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              Obx(() => errorMessage.value.isNotEmpty
+                  ? Padding(
+                      padding: EdgeInsets.only(top: 8.h),
+                      child: Row(
+                        children: [
+                          Icon(Icons.error_outline_rounded, color: Colors.redAccent, size: 14.sp),
+                          SizedBox(width: 6.w),
+                          Expanded(
+                            child: Text(
+                              errorMessage.value,
+                              style: TextStyle(
+                                color: Colors.redAccent,
+                                fontSize: 11.sp,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : const SizedBox.shrink()),
+
+              if (basePrice > 0) ...[
+                SizedBox(height: 14.h),
+                Row(
+                  children: [
+                    _buildDiscountChip("-5%", basePrice * 0.95, offerInputCtrl, validateOffer),
+                    SizedBox(width: 8.w),
+                    _buildDiscountChip("-10%", basePrice * 0.90, offerInputCtrl, validateOffer),
+                    SizedBox(width: 8.w),
+                    _buildDiscountChip("-15%", basePrice * 0.85, offerInputCtrl, validateOffer),
+                    SizedBox(width: 8.w),
+                    _buildDiscountChip("-20%", basePrice * 0.80, offerInputCtrl, validateOffer),
+                  ],
+                ),
+              ],
+
+              SizedBox(height: 16.h),
+              Text(
+                "Message to Seller (Optional)",
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: 13.sp,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              SizedBox(height: 8.h),
+              Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1E1E2C),
+                  borderRadius: BorderRadius.circular(16.r),
+                  border: Border.all(color: Colors.white.withOpacity(0.06)),
+                ),
+                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+                child: TextField(
+                  controller: noteInputCtrl,
+                  maxLines: 2,
+                  style: TextStyle(color: Colors.white, fontSize: 13.sp),
+                  decoration: InputDecoration(
+                    hintText: "Add a note or negotiate...",
+                    hintStyle: TextStyle(color: Colors.white24, fontSize: 13.sp),
+                    border: InputBorder.none,
+                  ),
+                ),
+              ),
+
+              SizedBox(height: 24.h),
+
+              Obx(() => GestureDetector(
+                onTap: controller.isSubmittingOffer.value
+                    ? null
+                    : () async {
+                        final double amount = double.tryParse(offerInputCtrl.text.trim()) ?? 0.0;
+                        if (amount <= 0) {
+                          errorMessage.value = "Please enter a valid offer amount.";
+                          return;
+                        }
+                        if (minOfferAmount > 0 && amount < minOfferAmount) {
+                          errorMessage.value = "Offer cannot be less than \$${minOfferAmount.toStringAsFixed(0)}.";
+                          return;
+                        }
+
+                        final success = await controller.sendCustomPriceOffer(
+                          offerAmount: amount,
+                          note: noteInputCtrl.text.trim(),
+                        );
+
+                        if (success) {
+                          Get.back();
+                          _showOfferSuccessDialog(amount, title);
+                        }
+                      },
+                child: Container(
+                  height: 54.h,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF8B9BFF),
+                    borderRadius: BorderRadius.circular(27.r),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF8B9BFF).withOpacity(0.35),
+                        blurRadius: 16.r,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  alignment: Alignment.center,
+                  child: controller.isSubmittingOffer.value
+                      ? SizedBox(
+                          width: 22.r,
+                          height: 22.r,
+                          child: const CircularProgressIndicator(color: Colors.black, strokeWidth: 2.5),
+                        )
+                      : Text(
+                          "Send Offer",
+                          style: TextStyle(
+                            color: const Color(0xFF0F172A),
+                            fontSize: 16.sp,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                ),
+              )),
+
+              if (product['allowTrade'] == true || product['allowTrade'] == 'true' || product['allowTrade'] == null) ...[
+                SizedBox(height: 12.h),
+                Center(
+                  child: TextButton(
+                    onPressed: () {
+                      Get.back();
+                      Get.toNamed('/make_offer', arguments: product);
+                    },
+                    child: Text(
+                      "Or propose an Item Swap instead ➔",
+                      style: TextStyle(
+                        color: Colors.white54,
+                        fontSize: 13.sp,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+      isScrollControlled: true,
+    );
+  }
+
+  Widget _buildDiscountChip(
+    String label,
+    double value,
+    TextEditingController controller,
+    Function(String) onUpdate,
+  ) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {
+          controller.text = value.toStringAsFixed(0);
+          onUpdate(controller.text);
+        },
+        child: Container(
+          padding: EdgeInsets.symmetric(vertical: 8.h),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1E1E2C),
+            borderRadius: BorderRadius.circular(10.r),
+            border: Border.all(color: Colors.white.withOpacity(0.06)),
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            label,
+            style: TextStyle(
+              color: const Color(0xFF8B9BFF),
+              fontSize: 11.sp,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showOfferSuccessDialog(double amount, String productTitle) {
+    Get.dialog(
+      Dialog(
+        backgroundColor: const Color(0xFF161622),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28.r)),
+        child: Padding(
+          padding: EdgeInsets.all(28.r),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                height: 72.r,
+                width: 72.r,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF22C55E).withOpacity(0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.check_circle_rounded, color: const Color(0xFF22C55E), size: 44.sp),
+              ),
+              SizedBox(height: 20.h),
+              Text(
+                "Offer Sent! 🎁",
+                style: TextStyle(color: Colors.white, fontSize: 20.sp, fontWeight: FontWeight.w900),
+              ),
+              SizedBox(height: 10.h),
+              Text(
+                "Your offer of \$${amount.toStringAsFixed(0)} for \"$productTitle\" has been submitted to the seller.",
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.white60, fontSize: 13.sp, height: 1.4),
+              ),
+              SizedBox(height: 24.h),
+              GestureDetector(
+                onTap: () => Get.back(),
+                child: Container(
+                  width: double.infinity,
+                  height: 48.h,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF8B9BFF),
+                    borderRadius: BorderRadius.circular(24.r),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    "Got It",
+                    style: TextStyle(color: const Color(0xFF0F172A), fontSize: 15.sp, fontWeight: FontWeight.w900),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 

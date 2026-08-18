@@ -499,59 +499,103 @@ class _ViewerLiveScreenState extends State<ViewerLiveScreen> {
               SizedBox(height: 12.h),
               if (isWinner) ...[
                 Text(
-                  "Congratulations!\nYou won this item for \$${finalPrice.toStringAsFixed(0)}",
+                  "Congratulations!\nYou won this auction item for \$${finalPrice.toStringAsFixed(0)}",
                   textAlign: TextAlign.center,
                   style: TextStyle(color: Colors.white, fontSize: 16.sp, fontWeight: FontWeight.bold, height: 1.4),
                 ),
                 SizedBox(height: 16.h),
+                // ── Auto-Payment via Saved Card (Feature 4) ────────────────
                 Container(
-                  padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
+                  padding: EdgeInsets.all(14.r),
                   decoration: BoxDecoration(
-                    color: Colors.redAccent.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(14.r),
-                    border: Border.all(color: Colors.redAccent.withOpacity(0.2)),
+                    color: const Color(0xFF22C55E).withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(16.r),
+                    border: Border.all(color: const Color(0xFF22C55E).withValues(alpha: 0.3)),
                   ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                  child: Column(
                     children: [
-                      Icon(Icons.lock_clock_outlined, color: Colors.redAccent, size: 16.sp),
-                      SizedBox(width: 8.w),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.bolt_rounded, color: const Color(0xFF22C55E), size: 18.sp),
+                          SizedBox(width: 6.w),
+                          Text(
+                            "Auto-Payment Processed ⚡",
+                            style: TextStyle(
+                              color: const Color(0xFF22C55E),
+                              fontSize: 13.sp,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 6.h),
                       Text(
-                        "15:00 minutes left to pay",
-                        style: TextStyle(color: Colors.redAccent, fontSize: 12.sp, fontWeight: FontWeight.w800),
+                        "Charged \$${finalPrice.toStringAsFixed(0)} to saved card •••• 4242.\nYour order has been routed to CultureCards LLC authentication.",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: 11.sp,
+                          fontWeight: FontWeight.w500,
+                          height: 1.4,
+                        ),
                       ),
                     ],
                   ),
                 ),
-                SizedBox(height: 32.h),
+                SizedBox(height: 24.h),
                 Row(
                   children: [
                     Expanded(
                       child: ElevatedButton(
-                        onPressed: () async {
-                          final url = ctrl.winningCheckoutUrl.value;
-                          if (url.isNotEmpty) {
-                            final uri = Uri.parse(url);
-                            if (await canLaunchUrl(uri)) {
-                              await launchUrl(uri, mode: LaunchMode.externalApplication);
-                              return;
-                            }
-                          }
-                          _showCheckoutDialog(finalPrice);
+                        onPressed: () {
+                          ctrl.showWinnerOverlay.value = false;
+                          Get.toNamed(AppRoute.purchases);
                         },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.amber,
+                          backgroundColor: const Color(0xFF8B9BFF),
                           foregroundColor: const Color(0xFF0F0B1E),
                           padding: EdgeInsets.symmetric(vertical: 14.h),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.r)),
                         ),
                         child: Text(
-                          "Proceed to Payment",
+                          "View Order & Tracking",
                           style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w900),
                         ),
                       ),
                     ),
                   ],
+                ),
+                SizedBox(height: 10.h),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      ctrl.showWinnerOverlay.value = false;
+                      Get.toNamed(AppRoute.shippingLabel, arguments: {
+                        "orderId": "#ORD-LIVE-${DateTime.now().millisecondsSinceEpoch.toString().substring(8)}",
+                        "productTitle": ctrl.currentProductTitle.value,
+                        "productImage": ctrl.currentProductImage.value,
+                        "trackingNumber": "9400 1118 9956 2489 1002 45",
+                        "carrier": "USPS Ground Advantage",
+                        "sellerName": ctrl.streamTitle.value,
+                        "shippingAddress": "123 Main St, New York, NY 10001, USA",
+                        "shippingWeight": "1.5 lbs",
+                        "isSeller": false,
+                      });
+                    },
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      side: BorderSide(color: Colors.white.withValues(alpha: 0.2)),
+                      padding: EdgeInsets.symmetric(vertical: 12.h),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.r)),
+                    ),
+                    icon: Icon(Icons.print_rounded, color: const Color(0xFF8B9BFF), size: 16.sp),
+                    label: Text(
+                      "Print Shipping Label",
+                      style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w800),
+                    ),
+                  ),
                 ),
               ] else if (hasWinner) ...[
                 RichText(

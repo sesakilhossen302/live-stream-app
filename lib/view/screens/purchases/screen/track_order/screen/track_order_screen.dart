@@ -126,6 +126,43 @@ class TrackOrderScreen extends StatelessWidget {
                             ],
                           ),
                           
+                          SizedBox(height: 14.h),
+
+                          // ── Print Shipping Label (Feature 1) ──────────────────────
+                          SizedBox(
+                            width: double.infinity,
+                            height: 52.h,
+                            child: ElevatedButton.icon(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF1E1E2C),
+                                foregroundColor: const Color(0xFF8B9BFF),
+                                side: BorderSide(color: const Color(0xFF8B9BFF).withValues(alpha: 0.35), width: 1.2),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.r)),
+                                elevation: 0,
+                              ),
+                              onPressed: () {
+                                Get.toNamed(AppRoute.shippingLabel, arguments: {
+                                  "orderId": controller.displayOrderId,
+                                  "rawOrderId": controller.orderId,
+                                  "productTitle": controller.productTitle,
+                                  "productImage": controller.productImage,
+                                  "trackingNumber": controller.trackingNumber,
+                                  "carrier": controller.carrierName,
+                                  "sellerName": controller.sellerName,
+                                  "shippingAddress": controller.shippingAddressFormatted,
+                                  "shippingWeight": controller.orderData['shippingWeight'] ?? controller.orderData['product']?['shippingWeight'] ?? '1.5 lbs',
+                                  "shippingLabelUrl": controller.orderData['shippingLabelUrl'] ?? '',
+                                  "isSeller": controller.isSeller,
+                                });
+                              },
+                              icon: Icon(Icons.print_rounded, color: const Color(0xFF8B9BFF), size: 20.sp),
+                              label: Text(
+                                "Print Shipping Label",
+                                style: TextStyle(color: const Color(0xFF8B9BFF), fontSize: 15.sp, fontWeight: FontWeight.w800),
+                              ),
+                            ),
+                          ),
+                          
                           SizedBox(height: 16.h),
 
                           // "Update Shipping Status" — SELLER ONLY

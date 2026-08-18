@@ -320,8 +320,11 @@ class _GoLiveSetupScreenState extends State<GoLiveSetupScreen> {
                       underline: const SizedBox.shrink(),
                       isExpanded: true,
                       style: TextStyle(color: Colors.white, fontSize: 14.sp, fontWeight: FontWeight.w700),
-                      items: [30, 60, 120, 180, 300].map((val) {
-                        return DropdownMenuItem(value: val, child: Text("${val}s"));
+                      items: [5, 10, 15, 30, 60, 120, 180, 300].map((val) {
+                        return DropdownMenuItem(
+                          value: val,
+                          child: Text(val <= 15 ? "${val}s (Fast Auction ⚡)" : "${val}s"),
+                        );
                       }).toList(),
                       onChanged: (val) => setState(() => _timerDuration = val ?? 60),
                     ),

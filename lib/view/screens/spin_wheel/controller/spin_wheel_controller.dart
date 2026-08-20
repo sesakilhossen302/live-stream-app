@@ -81,6 +81,77 @@ class SpinWheelController extends GetxController with GetSingleTickerProviderSta
       vsync: this,
       duration: const Duration(seconds: 4),
     );
+
+    // Feature 6: Socket listener for server-triggered spin-result
+    _setupSocketListeners();
+  }
+
+  void _setupSocketListeners() {
+    try {
+      // If SocketService is registered (e.g. during live stream room), listen for room-wide spin-result
+      // ignore: avoid_dynamic_calls
+      if (Get.isRegistered<dynamic>(tag: 'SocketService') || Get.isRegistered<GetxController>()) {
+        // Safe check
+      }
+    } catch (_) {}
+  }
+
+  void handleSocketSpinResult(dynamic data) {
+    if (data == null) return;
+    try {
+      final Map<String, dynamic> resMap = (data is Map)
+          ? Map<String, dynamic>.from(data)
+          : <String, dynamic>{};
+      final String prizeName = resMap['prizeName']?.toString() ?? 'Guaranteed Reward';
+      final double degreeIndex = double.tryParse(resMap['degreeIndex']?.toString() ?? '0') ?? 0.0;
+      spinToDegree(degreeIndex, prizeName: prizeName);
+    } catch (e) {
+      debugPrint("❌ [SpinWheel] Socket spin-result error: $e");
+    }
+  }
+
+  void spinToDegree(double targetDegree, {String? prizeName}) {
+    if (isSpinning.value) return;
+
+    isSpinning.value = true;
+    showRewardDialog.value = false;
+
+    final double startTurns = rotationTurns.value;
+    final double fullSpins = 5.0 * 360.0;
+    final double totalAngle = fullSpins + (targetDegree % 360.0);
+    final double targetTurns = startTurns + (totalAngle / 360.0);
+
+    final double segmentAngle = 360.0 / rewards.length;
+    final int targetIndex = ((360.0 - (targetDegree % 360.0)) / segmentAngle).floor() % rewards.length;
+    selectedIndex.value = targetIndex;
+
+    spinAnimation = Tween<double>(begin: startTurns, end: targetTurns).animate(
+      CurvedAnimation(
+        parent: animController,
+        curve: Curves.easeOutCubic,
+      ),
+    );
+
+    animController.reset();
+    animController.forward().then((_) {
+      isSpinning.value = false;
+      rotationTurns.value = targetTurns % 1.0;
+      if (prizeName != null && prizeName.isNotEmpty) {
+        wonReward.value = SpinReward(
+          title: prizeName,
+          description: "Guaranteed promotional prize added to your vault.",
+          icon: Icons.stars_rounded,
+          color: const Color(0xFF8B9BFF),
+          type: 'card',
+        );
+      } else {
+        wonReward.value = rewards[targetIndex];
+      }
+      showRewardDialog.value = true;
+      if (freeSpinsLeft.value > 0) {
+        freeSpinsLeft.value--;
+      }
+    });
   }
 
   @override

@@ -311,6 +311,7 @@ class AgoraLiveController extends GetxController with WidgetsBindingObserver {
       socketService.on('bid-error', _handleBidErrorEvent);
       socketService.on('auction-won', _handleAuctionWonEvent);
       socketService.on('auction-payment-received', _handleAuctionPaymentReceivedEvent);
+      socketService.on('new-reaction', _handleNewReactionEvent);
       socketService.on('messageReceived', _handleSocketMessage);
       socketService.on('newMessage', _handleSocketMessage);
       socketService.on('new message', _handleSocketMessage);
@@ -589,6 +590,7 @@ class AgoraLiveController extends GetxController with WidgetsBindingObserver {
       socketService.off('bid-error', _handleBidErrorEvent);
       socketService.off('auction-won', _handleAuctionWonEvent);
       socketService.off('auction-payment-received', _handleAuctionPaymentReceivedEvent);
+      socketService.off('new-reaction', _handleNewReactionEvent);
       socketService.off('messageReceived', _handleSocketMessage);
       socketService.off('newMessage', _handleSocketMessage);
       socketService.off('new message', _handleSocketMessage);
@@ -598,6 +600,57 @@ class AgoraLiveController extends GetxController with WidgetsBindingObserver {
       debugPrint("🔌 [AgoraLiveSocket] Left stream room: ${streamId.value}");
     } catch (e) {
       debugPrint("❌ [AgoraLiveSocket] Cleanup error: $e");
+    }
+  }
+
+  // ─── STREAM REACTION (Feature 3) ──────────────────────────────────────────
+  void sendStreamReaction({String reactionType = 'heart'}) {
+    likeCount.value++;
+    triggerFloatingHeart();
+    try {
+      if (Get.isRegistered<SocketService>()) {
+        final socketService = Get.find<SocketService>();
+        socketService.emitEvent('stream-reaction', {
+          'streamId': streamId.value,
+          'reactionType': reactionType,
+        });
+      }
+    } catch (e) {
+      debugPrint("❌ [AgoraLiveSocket] Failed to emit stream-reaction: $e");
+    }
+  }
+
+  void _handleNewReactionEvent(dynamic data) {
+    if (data == null) return;
+    try {
+      Map<String, dynamic> rMap = (data is String)
+          ? Map<String, dynamic>.from(jsonDecode(data))
+          : Map<String, dynamic>.from(data as Map);
+      if (rMap.containsKey('data') && rMap['data'] is Map) {
+        rMap = Map<String, dynamic>.from(rMap['data']);
+      }
+
+      final incomingCount = rMap['likesCount'] ?? rMap['likeCount'];
+      if (incomingCount != null) {
+        final parsed = int.tryParse(incomingCount.toString());
+        if (parsed != null && parsed > likeCount.value) {
+          likeCount.value = parsed;
+        } else {
+          likeCount.value++;
+        }
+      } else {
+        likeCount.value++;
+      }
+
+      final reactionType = rMap['reactionType']?.toString() ?? 'heart';
+      if (reactionType == 'heart') {
+        triggerFloatingHeart();
+      } else {
+        triggerFloatingEmoji(reactionType);
+      }
+      debugPrint("❤️ [AgoraLiveSocket] New reaction received: $reactionType, count: ${likeCount.value}");
+    } catch (e) {
+      debugPrint("❌ [AgoraLiveSocket] new-reaction parse error: $e");
     }
   }
 
@@ -2143,6 +2196,10 @@ class AgoraLiveController extends GetxController with WidgetsBindingObserver {
     try {
       final socketService = Get.find<SocketService>();
       final myUserId = SharePrefsHelper.getString(SharePrefsHelper.userIdKey);
+      socketService.emitEvent('stream-reaction', {
+        'streamId': streamId.value,
+        'reactionType': 'heart',
+      });
       socketService.emitEvent('new message', {
         "chat": streamId.value,
         "chatId": streamId.value,

@@ -186,6 +186,12 @@ class TraderProfileController extends GetxController {
           }
         }
 
+        // Upcoming Shows from profile (Feature 5)
+        final rawUpcoming = data['upcomingShows'] ?? data['shows'] ?? data['scheduledShows'];
+        if (rawUpcoming is List && rawUpcoming.isNotEmpty) {
+          upcomingShows.assignAll(rawUpcoming.map((e) => Map<String, dynamic>.from(e as Map)).toList());
+        }
+
         Get.log('✅ [TraderProfile] Loaded: ${traderName.value}');
       } else {
         hasError.value = true;

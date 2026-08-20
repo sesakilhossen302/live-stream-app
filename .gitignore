@@ -47,3 +47,7 @@ app.*.map.json
 branch_structure.json
 temp_auto_push.bat
 temp_interactive_push.bat
+<<<<<<< HEAD
+=======
+.gitignore
+>>>>>>> f576f84c7d71787184ff21c82756b260d0963aee

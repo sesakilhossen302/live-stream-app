@@ -81,6 +81,7 @@ class SpinWheelController extends GetxController with GetSingleTickerProviderSta
       vsync: this,
       duration: const Duration(seconds: 4),
     );
+<<<<<<< HEAD
 
     // Feature 6: Socket listener for server-triggered spin-result
     _setupSocketListeners();
@@ -152,6 +153,8 @@ class SpinWheelController extends GetxController with GetSingleTickerProviderSta
         freeSpinsLeft.value--;
       }
     });
+=======
+>>>>>>> f576f84c7d71787184ff21c82756b260d0963aee
   }
 
   @override

@@ -45,13 +45,7 @@ class SpinWheelScreen extends StatelessWidget {
             children: [
               // Anti-Gambling Guaranteed Reward Notice Banner
               _buildPolicyBanner(context),
-<<<<<<< HEAD
               SizedBox(height: 28.h),
-=======
-
-              SizedBox(height: 28.h),
-
->>>>>>> f576f84c7d71787184ff21c82756b260d0963aee
               // ── Wheel + Pointer Section ──────────────────────────────────
               Stack(
                 alignment: Alignment.center,

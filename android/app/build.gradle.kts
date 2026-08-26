@@ -7,7 +7,7 @@ plugins {
 android {
     namespace = "com.example.live_stream_app"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = "27.0.12077973"  // Required by agora_rtc_engine (and other plugins)
+    ndkVersion = "28.2.13676358"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17

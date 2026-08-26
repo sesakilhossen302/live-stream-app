@@ -302,6 +302,27 @@ class ApiClient {
     http.Response response,
     Future<http.Response> Function() retryAction,
   ) async {
+    // Check if account is deleted or user no longer exists
+    if (response.statusCode >= 400) {
+      try {
+        final Map<String, dynamic> body = jsonDecode(response.body);
+        final String rawMsg = (body['message'] ?? body['error'] ?? body['msg'] ?? "").toString();
+        final String lowerMsg = rawMsg.toLowerCase();
+
+        if (lowerMsg.contains("account is deleted") ||
+            lowerMsg.contains("account has been deleted") ||
+            lowerMsg.contains("user not found") ||
+            lowerMsg.contains("user does not exist") ||
+            lowerMsg.contains("account is deactivated") ||
+            lowerMsg.contains("jwt malformed") ||
+            lowerMsg.contains("invalid token") ||
+            lowerMsg.contains("invalid signature")) {
+          await _logoutUser(message: rawMsg.isNotEmpty ? rawMsg : "Your account is no longer active. Please sign up or log in again.");
+          return response;
+        }
+      } catch (_) {}
+    }
+
     if (response.statusCode == 401 && uri != "/auth/refresh-token") {
       final success = await _refreshToken();
       if (success) {

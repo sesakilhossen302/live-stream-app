@@ -1,5 +1,6 @@
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'dart:math' as math;
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
@@ -66,18 +67,16 @@ class _ViewerLiveScreenState extends State<ViewerLiveScreen> {
                 final isJoined = ctrl.remoteJoined.value;
                 final rUid = ctrl.remoteUid.value;
                 if (ctrl.engine != null && isJoined && rUid != -1) {
-                  return RepaintBoundary(
-                    child: AgoraVideoView(
-                      controller: VideoViewController.remote(
-                        rtcEngine: ctrl.engine!,
-                        canvas: VideoCanvas(
-                          uid: rUid,
-                          renderMode: RenderModeType.renderModeHidden,
-                        ),
-                        connection: RtcConnection(channelId: ctrl.channelName.value),
-                        useFlutterTexture: false,
-                        useAndroidSurfaceView: true,
+                  return AgoraVideoView(
+                    controller: VideoViewController.remote(
+                      rtcEngine: ctrl.engine!,
+                      canvas: VideoCanvas(
+                        uid: rUid,
+                        renderMode: RenderModeType.renderModeHidden,
                       ),
+                      connection: RtcConnection(channelId: ctrl.channelName.value),
+                      useFlutterTexture: true,
+                      useAndroidSurfaceView: false,
                     ),
                   );
                 }
@@ -371,6 +370,36 @@ class _ViewerLiveScreenState extends State<ViewerLiveScreen> {
               }
               return const SizedBox.shrink();
             }),
+
+            // ── Outbid Glowing Red Border Overlay
+            Obx(() {
+              if (!ctrl.isOutbid.value) return const SizedBox.shrink();
+              return Positioned.fill(
+                child: IgnorePointer(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      border: Border.all(
+                        color: const Color(0xFFFF2D55),
+                        width: 3.5.w,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFFFF2D55).withValues(alpha: 0.45),
+                          blurRadius: 24,
+                          spreadRadius: 4,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }),
+
+            // ── Interactive Outbid Floating Banner ("You've been outbid! Tap to bid $X")
+            Obx(() {
+              if (!ctrl.isOutbid.value) return const SizedBox.shrink();
+              return _buildOutbidBanner(ctrl);
+            }),
           ],
         ),
       ),
@@ -432,6 +461,145 @@ class _ViewerLiveScreenState extends State<ViewerLiveScreen> {
                 style: TextStyle(color: Colors.white, fontSize: 14.sp, fontWeight: FontWeight.w900),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOutbidBanner(AgoraLiveController ctrl) {
+    final currentBid = ctrl.currentBidPrice.value;
+    final nextBid = currentBid > 0 ? (currentBid + ctrl.bidIncrement.value) : ctrl.bidIncrement.value;
+    final isBidding = ctrl.isPlacingBid.value;
+
+    return Positioned(
+      left: 16.w,
+      right: 16.w,
+      bottom: 110.h,
+      child: Material(
+        color: Colors.transparent,
+        child: GestureDetector(
+          onTap: isBidding
+              ? null
+              : () {
+                  HapticFeedback.lightImpact();
+                  ctrl.placeBid(nextBid);
+                },
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 250),
+            padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFFFF2D55), Color(0xFFE00034)],
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+              ),
+              borderRadius: BorderRadius.circular(16.r),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.4), width: 1.5.w),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFFFF2D55).withValues(alpha: 0.55),
+                  blurRadius: 18,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(8.r),
+                  decoration: const BoxDecoration(
+                    color: Colors.white24,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.gavel_rounded, color: Colors.white, size: 18.sp),
+                ),
+                SizedBox(width: 10.w),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            "YOU'VE BEEN OUTBID!",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 12.sp,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 0.3,
+                            ),
+                          ),
+                          SizedBox(width: 6.w),
+                          Container(
+                            padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 1.5.h),
+                            decoration: BoxDecoration(
+                              color: Colors.black38,
+                              borderRadius: BorderRadius.circular(8.r),
+                            ),
+                            child: Text(
+                              "Highest: \$${currentBid.toStringAsFixed(0)}",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 9.sp,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 2.h),
+                      Text(
+                        "Tap to bid \$${nextBid.toStringAsFixed(0)} now",
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.95),
+                          fontSize: 11.sp,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20.r),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.15),
+                        blurRadius: 6,
+                      ),
+                    ],
+                  ),
+                  child: isBidding
+                      ? SizedBox(
+                          width: 16.r,
+                          height: 16.r,
+                          child: const CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Color(0xFFFF2D55),
+                          ),
+                        )
+                      : Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              "BID \$${nextBid.toStringAsFixed(0)}",
+                              style: TextStyle(
+                                color: const Color(0xFFFF2D55),
+                                fontSize: 11.sp,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                            SizedBox(width: 4.w),
+                            Icon(Icons.arrow_forward_rounded, color: const Color(0xFFFF2D55), size: 14.sp),
+                          ],
+                        ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -618,17 +786,37 @@ class _ViewerLiveScreenState extends State<ViewerLiveScreen> {
                       child: ElevatedButton(
                         onPressed: () {
                           ctrl.showWinnerOverlay.value = false;
-                          Get.offAllNamed('/main'); // Browse Products
+                          Get.offAllNamed('/main');
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF8B9BFF),
                           foregroundColor: const Color(0xFF0F0B1E),
                           padding: EdgeInsets.symmetric(vertical: 14.h),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.r)),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
                         ),
                         child: Text(
                           "Browse Products",
-                          style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w900),
+                          style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w900),
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: 10.w),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () {
+                          ctrl.showWinnerOverlay.value = false;
+                          ctrl.endStream();
+                        },
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.redAccent,
+                          side: const BorderSide(color: Colors.redAccent, width: 1.2),
+                          padding: EdgeInsets.symmetric(vertical: 14.h),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
+                        ),
+                        icon: Icon(Icons.logout_rounded, color: Colors.redAccent, size: 16.sp),
+                        label: Text(
+                          "Leave Stream",
+                          style: TextStyle(color: Colors.redAccent, fontSize: 13.sp, fontWeight: FontWeight.w800),
                         ),
                       ),
                     ),
@@ -642,7 +830,7 @@ class _ViewerLiveScreenState extends State<ViewerLiveScreen> {
                   style: TextStyle(color: Colors.white60, fontSize: 14.sp, height: 1.4),
                   textAlign: TextAlign.center,
                 ),
-                SizedBox(height: 32.h),
+                SizedBox(height: 24.h),
                 Row(
                   children: [
                     Expanded(
@@ -652,14 +840,34 @@ class _ViewerLiveScreenState extends State<ViewerLiveScreen> {
                           Get.offAllNamed('/main');
                         },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.white10,
-                          foregroundColor: Colors.white,
+                          backgroundColor: const Color(0xFF8B9BFF),
+                          foregroundColor: const Color(0xFF0F0B1E),
                           padding: EdgeInsets.symmetric(vertical: 14.h),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.r)),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
                         ),
                         child: Text(
                           "Browse Products",
-                          style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w900),
+                          style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w900),
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: 10.w),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () {
+                          ctrl.showWinnerOverlay.value = false;
+                          ctrl.endStream();
+                        },
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.redAccent,
+                          side: const BorderSide(color: Colors.redAccent, width: 1.2),
+                          padding: EdgeInsets.symmetric(vertical: 14.h),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
+                        ),
+                        icon: Icon(Icons.logout_rounded, color: Colors.redAccent, size: 16.sp),
+                        label: Text(
+                          "Leave Stream",
+                          style: TextStyle(color: Colors.redAccent, fontSize: 13.sp, fontWeight: FontWeight.w800),
                         ),
                       ),
                     ),
@@ -1663,15 +1871,36 @@ class _ViewerLiveScreenState extends State<ViewerLiveScreen> {
           final currentBid = ctrl.currentBidPrice.value;
           final nextBid = currentBid > 0 ? (currentBid + ctrl.bidIncrement.value) : ctrl.bidIncrement.value;
           final isBidding = ctrl.isPlacingBid.value;
+          final isOutbid = ctrl.isOutbid.value;
+
           return GestureDetector(
             onTap: isBidding ? null : () => ctrl.placeBid(nextBid),
             child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
+              duration: const Duration(milliseconds: 250),
               height: 48.h,
               padding: EdgeInsets.fromLTRB(16.w, 4.h, 8.w, 4.h),
               decoration: BoxDecoration(
-                color: isBidding ? const Color(0xFF8B9BFF).withValues(alpha: 0.6) : const Color(0xFF8B9BFF),
+                gradient: isOutbid
+                    ? const LinearGradient(
+                        colors: [Color(0xFFFF2D55), Color(0xFFE00034)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      )
+                    : null,
+                color: !isOutbid
+                    ? (isBidding ? const Color(0xFF8B9BFF).withValues(alpha: 0.6) : const Color(0xFF8B9BFF))
+                    : null,
                 borderRadius: BorderRadius.circular(24.r),
+                border: isOutbid ? Border.all(color: Colors.white, width: 1.5.w) : null,
+                boxShadow: isOutbid
+                    ? [
+                        BoxShadow(
+                          color: const Color(0xFFFF2D55).withValues(alpha: 0.65),
+                          blurRadius: 14,
+                          spreadRadius: 2,
+                        ),
+                      ]
+                    : null,
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -1681,9 +1910,9 @@ class _ViewerLiveScreenState extends State<ViewerLiveScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        "BID",
+                        isOutbid ? "OUTBID!" : "BID",
                         style: TextStyle(
-                          color: Colors.black.withValues(alpha: 0.6),
+                          color: isOutbid ? Colors.white : Colors.black.withValues(alpha: 0.6),
                           fontSize: 9.sp,
                           fontWeight: FontWeight.w900,
                           height: 1.0,
@@ -1693,7 +1922,7 @@ class _ViewerLiveScreenState extends State<ViewerLiveScreen> {
                       Text(
                         "\$${nextBid.toStringAsFixed(0)}",
                         style: TextStyle(
-                          color: Colors.black,
+                          color: isOutbid ? Colors.white : Colors.black,
                           fontSize: 15.sp,
                           fontWeight: FontWeight.w900,
                           height: 1.0,
@@ -1705,8 +1934,8 @@ class _ViewerLiveScreenState extends State<ViewerLiveScreen> {
                   Container(
                     width: 32.r,
                     height: 32.r,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFF6B7BFF),
+                    decoration: BoxDecoration(
+                      color: isOutbid ? Colors.white : const Color(0xFF6B7BFF),
                       shape: BoxShape.circle,
                     ),
                     child: Center(
@@ -1714,11 +1943,14 @@ class _ViewerLiveScreenState extends State<ViewerLiveScreen> {
                           ? SizedBox(
                               width: 14.r,
                               height: 14.r,
-                              child: const CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                              child: CircularProgressIndicator(
+                                color: isOutbid ? const Color(0xFFFF2D55) : Colors.white,
+                                strokeWidth: 2,
+                              ),
                             )
                           : Icon(
                               Icons.arrow_forward_rounded,
-                              color: Colors.black,
+                              color: isOutbid ? const Color(0xFFFF2D55) : Colors.black,
                               size: 16.sp,
                             ),
                     ),

@@ -5,13 +5,12 @@ import 'package:get/get.dart';
 import 'dart:convert';
 import '../../../../core/app_route.dart';
 import '../../../../global/widgets/custom_background.dart';
-import '../../browse/screen/browse_screen.dart';
-import '../../main/controller/main_controller.dart';
 import '../../purchases/screen/purchases_screen.dart';
 import '../controller/home_controller.dart';
 import 'home_live_preview_widget.dart';
 import '../../../../data/services/api_url.dart';
 import '../../live_stream/controller/agora_live_controller.dart';
+import '../../../../global/widgets/custom_shimmer.dart';
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
@@ -200,8 +199,18 @@ class HomeScreen extends StatelessWidget {
               // Dynamic spacing between Category Chips and content (prevents clutter when live shows are hidden)
               Obx(() => SizedBox(height: controller.liveItems.isNotEmpty ? 0 : 36.h)),
 
-              // Conditional Live Sections (Featured Card & Live Now Grid)
+              // Conditional Live Sections (Featured Card & Live Now Grid) or Shimmer
               Obx(() {
+                if (controller.isLoading.value && controller.liveItems.isEmpty) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildFeaturedLiveShimmer(),
+                      SizedBox(height: 40.h),
+                    ],
+                  );
+                }
+
                 final hasLive = controller.liveItems.isNotEmpty;
                 if (!hasLive) return const SizedBox.shrink();
 
@@ -479,20 +488,7 @@ class HomeScreen extends StatelessWidget {
                   SizedBox(height: 20.h),
                   Obx(() {
                     if (controller.isProductsLoading.value) {
-                      return GridView.count(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        crossAxisCount: 2,
-                        mainAxisSpacing: 16.h,
-                        crossAxisSpacing: 16.w,
-                        childAspectRatio: 0.75,
-                        children: List.generate(4, (_) => Container(
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF1E1E2C).withOpacity(0.4),
-                            borderRadius: BorderRadius.circular(24.r),
-                          ),
-                        )),
-                      );
+                      return _buildProductGridShimmer();
                     }
 
                     if (controller.products.isEmpty) {
@@ -897,6 +893,109 @@ class HomeScreen extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildFeaturedLiveShimmer() {
+    return Container(
+      height: 440.h,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: const Color(0xFF161622),
+        borderRadius: BorderRadius.circular(32.r),
+        border: Border.all(color: Colors.white.withOpacity(0.05)),
+      ),
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(32.r),
+              child: const CustomShimmer.rectangular(height: double.infinity),
+            ),
+          ),
+          Padding(
+            padding: EdgeInsets.all(28.r),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    CustomShimmer.rectangular(height: 24.h, width: 60.w),
+                    SizedBox(width: 10.w),
+                    CustomShimmer.rectangular(height: 24.h, width: 50.w),
+                  ],
+                ),
+                const Spacer(),
+                Row(
+                  children: [
+                    CustomShimmer.circular(width: 44.w, height: 44.w),
+                    SizedBox(width: 12.w),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        CustomShimmer.rectangular(height: 10.h, width: 70.w),
+                        SizedBox(height: 6.h),
+                        CustomShimmer.rectangular(height: 14.h, width: 110.w),
+                      ],
+                    ),
+                  ],
+                ),
+                SizedBox(height: 18.h),
+                CustomShimmer.rectangular(height: 24.h, width: 220.w),
+                SizedBox(height: 8.h),
+                CustomShimmer.rectangular(height: 20.h, width: 140.w),
+                SizedBox(height: 24.h),
+                CustomShimmer.rectangular(height: 60.h, width: double.infinity),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProductGridShimmer() {
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        crossAxisSpacing: 16.w,
+        mainAxisSpacing: 16.h,
+        childAspectRatio: 0.75,
+      ),
+      itemCount: 4,
+      itemBuilder: (context, index) {
+        return Container(
+          decoration: BoxDecoration(
+            color: const Color(0xFF11111A),
+            borderRadius: BorderRadius.circular(24.r),
+            border: Border.all(color: Colors.white.withOpacity(0.04)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
+                  child: const CustomShimmer.rectangular(height: double.infinity),
+                ),
+              ),
+              Padding(
+                padding: EdgeInsets.all(12.r),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    CustomShimmer.rectangular(height: 13.h, width: 110.w),
+                    SizedBox(height: 8.h),
+                    CustomShimmer.rectangular(height: 15.h, width: 65.w),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

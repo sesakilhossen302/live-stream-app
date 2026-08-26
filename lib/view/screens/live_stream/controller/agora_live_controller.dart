@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'dart:async';
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -89,6 +90,11 @@ class AgoraLiveController extends GetxController with WidgetsBindingObserver {
   final RxBool isUnsold = false.obs;
   final RxString winningCheckoutUrl = "".obs;
   final RxBool isPlacingBid = false.obs;
+  // Outbid tracking
+  final RxBool isOutbid = false.obs;
+  final RxDouble myLastBidAmount = 0.0.obs;
+  final RxDouble outbidAmount = 0.0.obs;
+  final RxBool isMyBidHighest = false.obs;
   Timer? _countdownTimer;
 
   String _getSenderUsername() {
@@ -402,6 +408,10 @@ class AgoraLiveController extends GetxController with WidgetsBindingObserver {
       lastBidderName.value = "";
       showWinnerOverlay.value = false;
       auctionActive.value = true;
+      isOutbid.value = false;
+      myLastBidAmount.value = 0.0;
+      isMyBidHighest.value = false;
+      outbidAmount.value = 0.0;
 
       int remainingSeconds = 60;
       final endsAtStr = itemMap['endsAt']?.toString();
@@ -472,6 +482,30 @@ class AgoraLiveController extends GetxController with WidgetsBindingObserver {
           if (bidAmt > currentBidPrice.value || currentBidPrice.value == 0) {
             currentBidPrice.value = bidAmt;
             debugPrint("🔥 [RealtimeBid] Updated currentBidPrice to \$${currentBidPrice.value} by $hName");
+          }
+
+          // Check if current user was outbid
+          final String myUserId = SharePrefsHelper.getString(SharePrefsHelper.userIdKey);
+          final bool isMe = (hId.isNotEmpty && hId == myUserId);
+
+          if (isMe) {
+            isMyBidHighest.value = true;
+            isOutbid.value = false;
+          } else if (myLastBidAmount.value > 0 && bidAmt > myLastBidAmount.value) {
+            // Another user placed a higher bid!
+            isMyBidHighest.value = false;
+            isOutbid.value = true;
+            outbidAmount.value = bidAmt;
+
+            // Trigger Light Vibration (Haptic Feedback)
+            try {
+              HapticFeedback.heavyImpact();
+              Future.delayed(const Duration(milliseconds: 150), () {
+                HapticFeedback.mediumImpact();
+              });
+            } catch (e) {
+              debugPrint("Haptic error: $e");
+            }
           }
 
           final endsAtStr = bMap['endsAt']?.toString();
@@ -1326,6 +1360,9 @@ class AgoraLiveController extends GetxController with WidgetsBindingObserver {
       final res = await _apiClient.postData(ApiUrl.placeBid, {"auctionItemId": auctionItemId.value, "bidAmount": amount});
       if (res.statusCode == 200 || res.statusCode == 201) {
         currentBidPrice.value = amount;
+        myLastBidAmount.value = amount;
+        isMyBidHighest.value = true;
+        isOutbid.value = false;
         final String usernameStr = _getSenderUsername();
         String avatarUrl = "";
         try { avatarUrl = Get.find<ProfileController>().profileImageUrl.value; } catch (_) {}

@@ -55,19 +55,17 @@ class _HostLiveScreenState extends State<HostLiveScreen> {
             Obx(() {
               final isReady = ctrl.isLocalVideoReady.value;
               if (ctrl.engine != null && isReady) {
-                return RepaintBoundary(
-                  child: AgoraVideoView(
-                    controller: VideoViewController(
-                      rtcEngine: ctrl.engine!,
-                      canvas: const VideoCanvas(
-                        uid: 0,
-                        renderMode: RenderModeType.renderModeHidden,
-                        mirrorMode: VideoMirrorModeType.videoMirrorModeEnabled,
-                        sourceType: VideoSourceType.videoSourceCamera,
-                      ),
-                      useFlutterTexture: false,
-                      useAndroidSurfaceView: true,
+                return AgoraVideoView(
+                  controller: VideoViewController(
+                    rtcEngine: ctrl.engine!,
+                    canvas: const VideoCanvas(
+                      uid: 0,
+                      renderMode: RenderModeType.renderModeHidden,
+                      mirrorMode: VideoMirrorModeType.videoMirrorModeEnabled,
+                      sourceType: VideoSourceType.videoSourceCamera,
                     ),
+                    useFlutterTexture: true,
+                    useAndroidSurfaceView: false,
                   ),
                 );
               }
@@ -539,15 +537,16 @@ class _HostLiveScreenState extends State<HostLiveScreen> {
               Row(
                 children: [
                   Expanded(
-                    child: ElevatedButton(
+                    child: ElevatedButton.icon(
                       onPressed: () => _showStartNewAuctionSheet(),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF8B9BFF),
                         foregroundColor: const Color(0xFF0F0B1E),
                         padding: EdgeInsets.symmetric(vertical: 14.h),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.r)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
                       ),
-                      child: Text(
+                      icon: Icon(Icons.play_arrow_rounded, size: 20.sp),
+                      label: Text(
                         "Start New Auction",
                         style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w900),
                       ),
@@ -555,11 +554,35 @@ class _HostLiveScreenState extends State<HostLiveScreen> {
                   ),
                 ],
               ),
-              SizedBox(height: 12.h),
+              SizedBox(height: 10.h),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        ctrl.showWinnerOverlay.value = false;
+                        _showEndStreamDialog(ctrl);
+                      },
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.redAccent,
+                        side: const BorderSide(color: Colors.redAccent, width: 1.2),
+                        padding: EdgeInsets.symmetric(vertical: 12.h),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
+                      ),
+                      icon: Icon(Icons.stop_circle_outlined, color: Colors.redAccent, size: 18.sp),
+                      label: Text(
+                        "End Live Stream",
+                        style: TextStyle(color: Colors.redAccent, fontSize: 13.sp, fontWeight: FontWeight.w800),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 8.h),
               TextButton(
                 onPressed: () => ctrl.showWinnerOverlay.value = false,
                 child: Text(
-                  "Continue Watching Stream",
+                  "Continue Hosting Stream",
                   style: TextStyle(color: Colors.white38, fontSize: 13.sp, fontWeight: FontWeight.w700),
                 ),
               ),

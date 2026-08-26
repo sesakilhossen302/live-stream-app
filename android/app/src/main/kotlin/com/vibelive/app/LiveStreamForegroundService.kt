@@ -1,4 +1,4 @@
-package com.example.live_stream_app
+package com.vibelive.app
 
 import android.app.Notification
 import android.app.NotificationChannel

@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
 
 class LiveStreamServiceBridge {
-  static const MethodChannel _channel = MethodChannel('com.example.live_stream_app/live_service');
+  static const MethodChannel _channel = MethodChannel('com.vibelive.app/live_service');
 
   // Callback to listen for PiP changes from native side
   static Function(bool)? _onPiPChangedCallback;

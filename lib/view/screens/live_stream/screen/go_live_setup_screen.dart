@@ -65,6 +65,17 @@ class _GoLiveSetupScreenState extends State<GoLiveSetupScreen> {
       Get.snackbar("Too Short", "Title must be at least 3 characters long", snackPosition: SnackPosition.BOTTOM);
       return;
     }
+
+    if (_selectedProduct == null) {
+      Get.snackbar(
+        "Product Required",
+        "Please select a product item to start the auction for your stream",
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.redAccent.withValues(alpha: 0.9),
+        colorText: Colors.white,
+      );
+      return;
+    }
     setState(() => _isStarting = true);
 
     final pTitle = _selectedProduct?['title']?.toString() ?? "";

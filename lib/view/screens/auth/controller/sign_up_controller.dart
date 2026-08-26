@@ -7,11 +7,21 @@ import '../../../../data/services/api_client.dart';
 import '../../../../data/services/api_url.dart';
 
 class SignUpController extends GetxController {
-  final firstNameController = TextEditingController();
-  final lastNameController = TextEditingController();
-  final emailController = TextEditingController();
-  final passwordController = TextEditingController();
-  final confirmPasswordController = TextEditingController();
+  late TextEditingController firstNameController;
+  late TextEditingController lastNameController;
+  late TextEditingController emailController;
+  late TextEditingController passwordController;
+  late TextEditingController confirmPasswordController;
+
+  @override
+  void onInit() {
+    super.onInit();
+    firstNameController = TextEditingController();
+    lastNameController = TextEditingController();
+    emailController = TextEditingController();
+    passwordController = TextEditingController();
+    confirmPasswordController = TextEditingController();
+  }
 
   final RxBool agreeToTerms = false.obs;
   final RxBool isPasswordVisible = false.obs;

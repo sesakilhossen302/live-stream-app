@@ -32,10 +32,12 @@ class CustomNetworkImage extends StatelessWidget {
       width: width,
       height: height,
       fit: fit,
-      placeholder: (context, url) => CustomShimmer(
+      placeholder: (context, url) => CustomShimmer.rectangular(
         width: width ?? double.infinity,
         height: height ?? double.infinity,
-        borderRadius: borderRadius ?? BorderRadius.zero,
+        shapeBorder: RoundedRectangleBorder(
+          borderRadius: borderRadius ?? BorderRadius.zero,
+        ),
       ),
       errorWidget: (context, url, error) => errorWidget ?? _buildErrorPlaceholder(),
     );

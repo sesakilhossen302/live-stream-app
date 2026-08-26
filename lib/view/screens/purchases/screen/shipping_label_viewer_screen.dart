@@ -107,6 +107,30 @@ class ShippingLabelViewerScreen extends StatelessWidget {
               SizedBox(height: 32.h),
 
               // ── Action Buttons ───────────────────────────────────────────
+              if (!isSeller) ...[
+                SizedBox(
+                  width: double.infinity,
+                  height: 56.h,
+                  child: ElevatedButton.icon(
+                    onPressed: () => _showCheckoutBottomSheet(context, productTitle, orderId),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFFFB800),
+                      foregroundColor: const Color(0xFF0F172A),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(28.r),
+                      ),
+                      elevation: 0,
+                    ),
+                    icon: Icon(Icons.payment_rounded, size: 22.sp),
+                    label: Text(
+                      "Pay Now & Complete Checkout",
+                      style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w900),
+                    ),
+                  ),
+                ),
+                SizedBox(height: 14.h),
+              ],
+
               SizedBox(
                 width: double.infinity,
                 height: 56.h,
@@ -155,6 +179,113 @@ class ShippingLabelViewerScreen extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+
+  void _showCheckoutBottomSheet(BuildContext context, String title, String orderId) {
+    final addressCtrl = TextEditingController(text: "123 Main St, New York");
+    final zipCtrl = TextEditingController(text: "10001");
+    final RxBool isPaying = false.obs;
+
+    Get.bottomSheet(
+      Container(
+        padding: EdgeInsets.all(24.r),
+        decoration: BoxDecoration(
+          color: const Color(0xFF11111A),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(32.r)),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40.w,
+                height: 4.h,
+                margin: EdgeInsets.only(bottom: 20.h),
+                decoration: BoxDecoration(color: Colors.white12, borderRadius: BorderRadius.circular(2.r)),
+              ),
+            ),
+            Text("Complete Payment", style: TextStyle(color: Colors.white, fontSize: 20.sp, fontWeight: FontWeight.w900)),
+            SizedBox(height: 4.h),
+            Text("Order: $orderId • $title", style: TextStyle(color: Colors.white38, fontSize: 12.sp)),
+            SizedBox(height: 20.h),
+
+            Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFF161622),
+                borderRadius: BorderRadius.circular(14.r),
+                border: Border.all(color: Colors.white10),
+              ),
+              child: TextField(
+                controller: addressCtrl,
+                style: TextStyle(color: Colors.white, fontSize: 13.sp),
+                decoration: InputDecoration(
+                  labelText: "Shipping Address",
+                  labelStyle: const TextStyle(color: Colors.white38),
+                  border: InputBorder.none,
+                  contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+                ),
+              ),
+            ),
+            SizedBox(height: 12.h),
+            Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFF161622),
+                borderRadius: BorderRadius.circular(14.r),
+                border: Border.all(color: Colors.white10),
+              ),
+              child: TextField(
+                controller: zipCtrl,
+                style: TextStyle(color: Colors.white, fontSize: 13.sp),
+                decoration: InputDecoration(
+                  labelText: "ZIP / Postal Code",
+                  labelStyle: const TextStyle(color: Colors.white38),
+                  border: InputBorder.none,
+                  contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+                ),
+              ),
+            ),
+            SizedBox(height: 24.h),
+
+            Obx(() => SizedBox(
+              width: double.infinity,
+              height: 54.h,
+              child: ElevatedButton(
+                onPressed: isPaying.value
+                    ? null
+                    : () async {
+                        isPaying.value = true;
+                        await Future.delayed(const Duration(seconds: 1));
+                        isPaying.value = false;
+                        Get.back();
+                        Get.snackbar(
+                          "Payment Successful! ⚡",
+                          "Your order has been paid and is being prepared for shipment.",
+                          backgroundColor: const Color(0xFF22C55E),
+                          colorText: Colors.white,
+                          snackPosition: SnackPosition.TOP,
+                          duration: const Duration(seconds: 4),
+                        );
+                      },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFFFB800),
+                  foregroundColor: const Color(0xFF0F0B1E),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.r)),
+                ),
+                child: isPaying.value
+                    ? const CircularProgressIndicator(color: Colors.black)
+                    : Text(
+                        "Confirm & Pay Now",
+                        style: TextStyle(fontSize: 15.sp, fontWeight: FontWeight.w900),
+                      ),
+              ),
+            )),
+          ],
+        ),
+      ),
+      isScrollControlled: true,
     );
   }
 

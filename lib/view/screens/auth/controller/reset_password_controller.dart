@@ -7,8 +7,15 @@ import '../../../../data/services/api_client.dart';
 import '../../../../data/services/api_url.dart';
 
 class ResetPasswordController extends GetxController {
-  final passwordController = TextEditingController();
-  final confirmPasswordController = TextEditingController();
+  late TextEditingController passwordController;
+  late TextEditingController confirmPasswordController;
+
+  @override
+  void onInit() {
+    super.onInit();
+    passwordController = TextEditingController();
+    confirmPasswordController = TextEditingController();
+  }
   final RxBool isLoading = false.obs;
   final ApiClient _apiClient = Get.find<ApiClient>();
 

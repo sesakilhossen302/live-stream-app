@@ -52,6 +52,9 @@ class _FloatingLiveStreamOverlayState extends State<FloatingLiveStreamOverlay> w
 
   @override
   Widget build(BuildContext context) {
+    if (!Get.isRegistered<AgoraLiveController>()) {
+      return const SizedBox.shrink();
+    }
     final ctrl = Get.find<AgoraLiveController>();
 
     final screenSize = MediaQuery.of(context).size;

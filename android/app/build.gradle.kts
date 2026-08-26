@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.live_stream_app"
+    namespace = "com.vibelive.app"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = "28.2.13676358"
 
@@ -19,7 +19,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.live_stream_app"
+        applicationId = "com.vibelive.app"
         // Android 10 (API 29) required for foregroundServiceType camera + microphone
         minSdk = 29
         targetSdk = flutter.targetSdkVersion

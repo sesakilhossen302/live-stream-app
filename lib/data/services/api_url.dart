@@ -1,8 +1,19 @@
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class ApiUrl {
-  static String get baseUrl => dotenv.env['BASE_URL'] ?? "http://10.10.26.208:5007/api/v1";
-  static String get imageBaseUrl => dotenv.env['IMAGE_BASE_URL'] ?? "http://10.10.26.208:5007";
+  static String get baseUrl {
+    if (dotenv.isInitialized) {
+      return dotenv.env['BASE_URL'] ?? "http://10.10.26.208:5007/api/v1";
+    }
+    return "http://10.10.26.208:5007/api/v1";
+  }
+
+  static String get imageBaseUrl {
+    if (dotenv.isInitialized) {
+      return dotenv.env['IMAGE_BASE_URL'] ?? "http://10.10.26.208:5007";
+    }
+    return "http://10.10.26.208:5007";
+  }
 
 
   // Auth

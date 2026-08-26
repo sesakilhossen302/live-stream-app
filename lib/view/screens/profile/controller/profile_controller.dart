@@ -71,8 +71,14 @@ class ProfileController extends GetxController {
 
         final String fn = data['fullName'] ?? "";
         name.value = fn.isNotEmpty ? fn : "User";
+        if (fn.isNotEmpty) {
+          SharePrefsHelper.setString('fullName', fn);
+        }
         final String un = data['username'] ?? fn.replaceAll(' ', '').toLowerCase();
         username.value = un.isNotEmpty ? "@$un" : "";
+        if (un.isNotEmpty) {
+          SharePrefsHelper.setString('userName', un);
+        }
         email.value = data['email'] ?? "";
         description.value = data['description'] ?? "No bio added yet.";
 
@@ -216,12 +222,7 @@ class ProfileController extends GetxController {
 
   Future<void> updateImage(ImageSource source, {required bool isCover}) async {
     try {
-      final XFile? image = await _picker.pickImage(
-        source: source,
-        maxWidth: isCover ? 1920 : 1080,
-        maxHeight: isCover ? 1080 : 1080,
-        imageQuality: 85,
-      );
+      final XFile? image = await _picker.pickImage(source: source);
       if (image != null) {
         isLoading.value = true;
 

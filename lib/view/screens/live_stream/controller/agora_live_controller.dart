@@ -12,7 +12,10 @@ import '../../../../data/services/api_url.dart';
 import '../../../../data/services/socket_service.dart';
 import '../../../../data/services/live_stream_service_bridge.dart';
 import '../../../../core/app_route.dart';
+import 'package:flutter_stripe/flutter_stripe.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../profile/controller/profile_controller.dart';
+import '../../home/controller/home_controller.dart';
 
 class FloatingHeart {
   final double id;
@@ -90,22 +93,50 @@ class AgoraLiveController extends GetxController with WidgetsBindingObserver {
 
   String _getSenderUsername() {
     try {
-      final p = Get.find<ProfileController>();
-      final uName = p.username.value.trim();
-      if (uName.isNotEmpty && uName != "@username" && uName != "user" && uName != "@user") {
-        return uName.startsWith('@') ? uName : '@$uName';
-      }
-      final fName = p.name.value.trim();
-      if (fName.isNotEmpty && fName != "User Name") {
-        return fName.startsWith('@') ? fName : '@$fName';
+      if (Get.isRegistered<ProfileController>()) {
+        final p = Get.find<ProfileController>();
+        final uName = p.username.value.trim();
+        if (uName.isNotEmpty && uName != "@username" && uName != "user" && uName != "@user") {
+          return uName.startsWith('@') ? uName : '@$uName';
+        }
+        final fName = p.name.value.trim();
+        if (fName.isNotEmpty && fName != "User Name" && fName != "User") {
+          return fName.startsWith('@') ? fName : '@$fName';
+        }
       }
     } catch (_) {}
+
+    if (activeStreamData.isNotEmpty) {
+      final curator = activeStreamData['curator']?.toString().trim();
+      if (curator != null && curator.isNotEmpty) {
+        return curator.startsWith('@') ? curator : '@$curator';
+      }
+      final seller = activeStreamData['sellerId'] ?? activeStreamData['seller'] ?? activeStreamData['host'];
+      if (seller is Map) {
+        final sName = (seller['fullName'] ?? seller['name'] ?? seller['username'] ?? '').toString().trim();
+        if (sName.isNotEmpty) {
+          return sName.startsWith('@') ? sName : '@$sName';
+        }
+      }
+    }
+
+    final prefName = SharePrefsHelper.getString('fullName');
+    if (prefName.isNotEmpty && prefName != "User") {
+      return prefName.startsWith('@') ? prefName : '@$prefName';
+    }
+
+    final prefUser = SharePrefsHelper.getString('userName');
+    if (prefUser.isNotEmpty && prefUser != "User") {
+      return prefUser.startsWith('@') ? prefUser : '@$prefUser';
+    }
+
     return "@user";
   }
 
   // Stream state
   final RxBool isLive = false.obs;
   final RxBool isMinimized = false.obs;
+  final RxBool isEnding = false.obs;
   Map<String, dynamic> activeStreamData = {};
   final RxBool isLoading = false.obs;
   final RxBool isCameraOn = true.obs;
@@ -127,6 +158,8 @@ class AgoraLiveController extends GetxController with WidgetsBindingObserver {
     isHost.value = true;
     isMinimized.value = false;
     isCameraOn.value = true;
+    isLocalVideoReady.value = true;
+
     if (engine != null) {
       try {
         await engine!.setClientRole(role: ClientRoleType.clientRoleBroadcaster);
@@ -134,16 +167,12 @@ class AgoraLiveController extends GetxController with WidgetsBindingObserver {
         await engine!.enableLocalVideo(true);
         await engine!.muteLocalVideoStream(false);
         await engine!.startPreview();
-        isLocalVideoReady.value = true;
         debugPrint("📹 [AgoraLiveController] Host camera preview ensured and ready.");
       } catch (e) {
         debugPrint("⚠️ Host camera preview error: $e");
-        isLocalVideoReady.value = true;
       }
     } else if (channelName.value.isNotEmpty) {
       await _initAgora(isHost: true, channel: channelName.value);
-    } else {
-      isLocalVideoReady.value = true;
     }
   }
 
@@ -605,7 +634,10 @@ class AgoraLiveController extends GetxController with WidgetsBindingObserver {
 
   // ─── STREAM REACTION (Feature 3) ──────────────────────────────────────────
   void sendStreamReaction({String reactionType = 'heart'}) {
-    likeCount.value++;
+    if (!isLiked.value) {
+      isLiked.value = true;
+      likeCount.value++;
+    }
     triggerFloatingHeart();
     try {
       if (Get.isRegistered<SocketService>()) {
@@ -635,11 +667,7 @@ class AgoraLiveController extends GetxController with WidgetsBindingObserver {
         final parsed = int.tryParse(incomingCount.toString());
         if (parsed != null && parsed > likeCount.value) {
           likeCount.value = parsed;
-        } else {
-          likeCount.value++;
         }
-      } else {
-        likeCount.value++;
       }
 
       final reactionType = rMap['reactionType']?.toString() ?? 'heart';
@@ -683,22 +711,44 @@ class AgoraLiveController extends GetxController with WidgetsBindingObserver {
 
       final content = msgMap['content'] ?? msgMap['text'] ?? msgMap['message'] ?? "";
       final senderObj = msgMap['sender'];
-      final senderName = (senderObj is Map) ? (senderObj['name'] ?? senderObj['fullName'] ?? "User") : "User";
-      final senderAvatar = (senderObj is Map) ? (senderObj['avatar'] ?? "") : "";
-      final senderId = (senderObj is Map) ? (senderObj['_id'] ?? "") : "";
+
+      String senderName = "";
+      String senderAvatar = "";
+      String senderId = "";
+
+      if (senderObj is Map) {
+        senderId = (senderObj['_id'] ?? senderObj['id'] ?? msgMap['senderId'] ?? '').toString();
+        senderName = (senderObj['name'] ?? senderObj['fullName'] ?? senderObj['username'] ?? msgMap['senderName'] ?? msgMap['username'] ?? msgMap['user'] ?? 'User').toString();
+        senderAvatar = (senderObj['avatar'] ?? senderObj['userAvatar'] ?? msgMap['userAvatar'] ?? msgMap['avatar'] ?? '').toString();
+      } else if (senderObj is String && senderObj.isNotEmpty) {
+        senderId = senderObj;
+        senderName = (msgMap['senderName'] ?? msgMap['username'] ?? msgMap['user'] ?? msgMap['name'] ?? msgMap['fullName'] ?? 'User').toString();
+        senderAvatar = (msgMap['userAvatar'] ?? msgMap['avatar'] ?? '').toString();
+      } else {
+        senderId = (msgMap['senderId'] ?? '').toString();
+        senderName = (msgMap['senderName'] ?? msgMap['username'] ?? msgMap['user'] ?? msgMap['name'] ?? msgMap['fullName'] ?? 'User').toString();
+        senderAvatar = (msgMap['userAvatar'] ?? msgMap['avatar'] ?? '').toString();
+      }
+
+      if (senderName.isEmpty || senderName == "User" || senderName == "user") {
+        final fallbackName = msgMap['senderName'] ?? msgMap['username'] ?? msgMap['user'] ?? msgMap['name'] ?? msgMap['fullName'];
+        if (fallbackName != null && fallbackName.toString().isNotEmpty) {
+          senderName = fallbackName.toString();
+        }
+      }
 
       // Filter: only process messages for our active stream room
       final String incomingChat = (msgMap['chat'] is Map)
           ? (msgMap['chat']['_id'] ?? msgMap['chat']['id'] ?? '').toString()
-          : (msgMap['chat'] ?? msgMap['chatId'] ?? '').toString();
-      if (incomingChat.isNotEmpty && streamId.value.isNotEmpty && incomingChat != streamId.value) return;
+          : (msgMap['chat'] ?? msgMap['chatId'] ?? msgMap['streamId'] ?? '').toString();
+      if (incomingChat.isNotEmpty && streamId.value.isNotEmpty && incomingChat != streamId.value && !streamId.value.contains(incomingChat) && !incomingChat.contains(streamId.value)) return;
 
       // Skip empty messages
       if (content.toString().trim().isEmpty) return;
 
       // Skip own message echo (already added locally)
       final String currentUserId = SharePrefsHelper.getString(SharePrefsHelper.userIdKey);
-      if (senderId.toString().isNotEmpty && senderId.toString() == currentUserId) return;
+      if (senderId.isNotEmpty && senderId == currentUserId) return;
 
       // Handle Extend Timer event
       if (msgMap['isExtendTimer'] == true) {
@@ -738,9 +788,8 @@ class AgoraLiveController extends GetxController with WidgetsBindingObserver {
       // Handle Like event
       final isLike = msgMap['isLike'] == true || content.toString().contains('❤️');
       if (isLike) {
-        likeCount.value++;
         triggerFloatingHeart(); // Spawn floating heart
-        debugPrint("❤️ Dynamic Like count received via socket: ${likeCount.value}");
+        debugPrint("❤️ Dynamic Like heart trigger received via socket");
         return;
       }
 
@@ -880,6 +929,7 @@ class AgoraLiveController extends GetxController with WidgetsBindingObserver {
     String productImage = "",
   }) async {
     isLoading.value = true;
+    isEnding.value = false;
     try {
       final sellerIdVal = SharePrefsHelper.getString(SharePrefsHelper.userIdKey);
       final channel = "stream_${sellerIdVal}_${DateTime.now().millisecondsSinceEpoch}";
@@ -992,8 +1042,9 @@ class AgoraLiveController extends GetxController with WidgetsBindingObserver {
           resumeStream();
           return;
         }
-        final sid = streamData['_id']?.toString() ?? "";
-        final channel = streamData['agoraChannelName']?.toString() ?? "";
+        activeStreamData = streamData;
+        final sid = (streamData['_id'] ?? streamData['id'] ?? streamData['streamId'] ?? '').toString();
+        final channel = (streamData['agoraChannelName'] ?? streamData['channelName'] ?? streamData['channel'] ?? '').toString();
         streamId.value = sid;
         channelName.value = channel;
         streamTitle.value = streamData['title']?.toString() ?? "My Live Stream";
@@ -1007,7 +1058,8 @@ class AgoraLiveController extends GetxController with WidgetsBindingObserver {
         return;
       }
 
-      final sid = streamData['_id']?.toString() ?? "";
+      activeStreamData = streamData;
+      final sid = (streamData['_id'] ?? streamData['id'] ?? streamData['streamId'] ?? '').toString();
       isHost.value = false;
       streamId.value = sid;
       streamTitle.value = streamData['title']?.toString() ?? "Live Stream";
@@ -1537,7 +1589,6 @@ class AgoraLiveController extends GetxController with WidgetsBindingObserver {
         "userAvatar": avatar,
       });
     } else if (type == 'like') {
-      likeCount.value++;
       triggerFloatingHeart(); // Trigger float heart animation!
     } else if (type == 'join') {
       final username = payload['username'] ?? 'Viewer';
@@ -1917,55 +1968,41 @@ class AgoraLiveController extends GetxController with WidgetsBindingObserver {
   //  END STREAM
   // ─────────────────────────────────────────────
   Future<void> endStream() async {
-    final wasHost = isHost.value;
-    isHost.value = false;
-    LiveStreamServiceBridge.stopLiveService();
-    _countdownTimer?.cancel();
-    
-    if (wasHost && streamId.value.isNotEmpty) {
-      // Complete the active auction item on the backend
-      if (auctionItemId.value.isNotEmpty) {
-        try {
-          final res = await _apiClient.postData("/auctions/item/${auctionItemId.value}/complete", {});
-          if (res.statusCode == 200 || res.statusCode == 201) {
-            debugPrint("✅ Auction item completed manually by host ending stream");
-          }
-        } catch (e) {
-          debugPrint("❌ Error completing auction item on end stream: $e");
-        }
-      }
+    isEnding.value = true;
+    isLive.value = false;
+    isMinimized.value = false;
 
-      // 1. Update stream status to ended in backend
+    final wasHost = isHost.value;
+    String activeStreamId = streamId.value;
+    if (activeStreamId.isEmpty) {
+      activeStreamId = (activeStreamData['_id'] ?? activeStreamData['id'] ?? activeStreamData['streamId'] ?? '').toString();
+    }
+    final activeAuctionItemId = auctionItemId.value;
+
+    // 1. Await backend status update to mark stream as ended in database
+    if (activeStreamId.isNotEmpty) {
       try {
-        final res = await _apiClient.patchData("${ApiUrl.startStream}/${streamId.value}/status", {
-          'status': 'ended'
-        });
-        if (res.statusCode == 200 || res.statusCode == 201) {
-          debugPrint('✅ Stream status updated to ended in backend: ' + res.body);
-        } else {
-          debugPrint('❌ Failed to update stream status to ended (status ' + res.statusCode.toString() + '): ' + res.body);
+        if (activeAuctionItemId.isNotEmpty) {
+          await _apiClient.postData("/auctions/item/$activeAuctionItemId/complete", {});
+        }
+        await _apiClient.patchData("${ApiUrl.startStream}/$activeStreamId/status", {'status': 'ended'});
+        await _apiClient.patchData("${ApiUrl.liveStreams}/$activeStreamId/status", {'status': 'ended'});
+        await _apiClient.postData("${ApiUrl.startStream}/$activeStreamId/end", {});
+        debugPrint("✅ Stream status updated to ended on backend DB for $activeStreamId");
+
+        if (Get.isRegistered<SocketService>()) {
+          Get.find<SocketService>().emitEvent('end-stream', {
+            "streamId": activeStreamId,
+            "sellerId": sellerId.value,
+          });
         }
       } catch (e) {
-        debugPrint('❌ Exception updating stream status to ended: ' + e.toString());
-      }
-      // 2. Emit end-stream socket event to viewers
-      try {
-        final socketService = Get.find<SocketService>();
-        socketService.emitEvent('end-stream', {
-          "streamId": streamId.value,
-          "sellerId": sellerId.value,
-        });
-        debugPrint("⚡ Emitted 'end-stream' socket event");
-      } catch (e) {
-        debugPrint("❌ Failed to emit end-stream socket event: $e");
+        debugPrint("⚠️ Backend endStream status update info: $e");
       }
     }
-    
-    _cleanupSocket();
-    await engine?.leaveChannel();
-    await engine?.stopPreview();
-    await engine?.release();
-    engine = null;
+
+    // 2. Instantly reset stream state variables
+    isHost.value = false;
     isLive.value = false;
     isMinimized.value = false;
     isLocalVideoReady.value = false;
@@ -1978,8 +2015,79 @@ class AgoraLiveController extends GetxController with WidgetsBindingObserver {
     currentProductId.value = "";
     currentProductTitle.value = "";
     currentProductImage.value = "";
-    
+
+    LiveStreamServiceBridge.stopLiveService();
+    _countdownTimer?.cancel();
+    _cleanupSocket();
+
+    // 3. Remove ended stream from local memory list & refresh HomeController
+    liveStreamsList.removeWhere((s) => (s['_id'] ?? s['id']) == activeStreamId);
+    try {
+      if (Get.isRegistered<HomeController>()) {
+        Get.find<HomeController>().fetchLiveStreams();
+      }
+    } catch (_) {}
+
+    // 4. Release engine asynchronously in background
+    final activeEngine = engine;
+    engine = null;
+    if (activeEngine != null) {
+      Future.microtask(() async {
+        try {
+          await activeEngine.stopPreview().catchError((_) => null);
+          await activeEngine.leaveChannel().catchError((_) => null);
+          await activeEngine.release().catchError((_) => null);
+        } catch (e) {
+          debugPrint("⚠️ Background engine release info: $e");
+        }
+      });
+    }
+
+    // 5. Ensure HomeController is registered & navigate back to Main screen
+    if (!Get.isRegistered<HomeController>()) {
+      Get.put(HomeController());
+    }
     Get.offAllNamed('/main');
+  }
+
+  Future<bool> _initAndPresentStripePaymentSheet(Map<dynamic, dynamic> data) async {
+    try {
+      final clientSecret = data['clientSecret']?.toString() ?? '';
+      final ephemeralKey = data['ephemeralKey']?.toString() ?? '';
+      final customerId = data['customer']?.toString() ?? '';
+
+      final pubKey = data['publishableKey'] ?? data['stripePublishableKey'] ?? data['pk'];
+      if (pubKey != null && pubKey.toString().isNotEmpty) {
+        Stripe.publishableKey = pubKey.toString();
+        await Stripe.instance.applySettings();
+      }
+
+      await Stripe.instance.initPaymentSheet(
+        paymentSheetParameters: SetupPaymentSheetParameters(
+          paymentIntentClientSecret: clientSecret,
+          customerEphemeralKeySecret: ephemeralKey.isNotEmpty ? ephemeralKey : null,
+          customerId: customerId.isNotEmpty ? customerId : null,
+          merchantDisplayName: 'Culture Cards LLC',
+          style: ThemeMode.dark,
+          appearance: const PaymentSheetAppearance(
+            colors: PaymentSheetAppearanceColors(
+              primary: Color(0xFF8B9BFF),
+              background: Color(0xFF161622),
+              componentBackground: Color(0xFF1E1E2C),
+              componentText: Colors.white,
+              primaryText: Colors.white,
+              secondaryText: Colors.white70,
+            ),
+          ),
+        ),
+      );
+
+      await Stripe.instance.presentPaymentSheet();
+      return true;
+    } catch (e) {
+      debugPrint("⚠️ [flutter_stripe] PaymentSheet error/cancel: $e");
+      return false;
+    }
   }
 
   Future<bool> checkoutAuctionOrder({
@@ -2043,9 +2151,67 @@ class AgoraLiveController extends GetxController with WidgetsBindingObserver {
         }
       };
 
-      debugPrint("📦 [checkoutAuctionOrder] Sending order payload to /orders: $payload");
-
       String orderId = "ORD-${DateTime.now().millisecondsSinceEpoch}";
+
+      // 1. Initiate Real Stripe Payment via flutter_stripe PaymentSheet or Web Session
+      bool paymentSuccess = false;
+      try {
+        final checkoutPayload = {
+          "amount": totalPaid,
+          "currency": "USD",
+          "productName": currentProductTitle.value.isNotEmpty ? currentProductTitle.value : "Auction Item",
+          "metadata": {
+            "purchaseType": "buy_now",
+            "productId": targetProductId,
+            "streamId": streamId.value,
+          }
+        };
+        final sessionRes = await _apiClient.postData(ApiUrl.createCheckoutSession, checkoutPayload);
+        if (sessionRes.statusCode == 200 || sessionRes.statusCode == 201) {
+          final resBody = jsonDecode(sessionRes.body);
+          final data = resBody['data'];
+          if (data is Map && data.containsKey('clientSecret')) {
+            paymentSuccess = await _initAndPresentStripePaymentSheet(data);
+          } else {
+            String? stripeUrl;
+            if (data is Map) {
+              stripeUrl = (data['url'] ?? data['checkoutUrl'] ?? data['paymentUrl'] ?? data['redirectUrl'] ?? data['sessionUrl'])?.toString();
+            } else if (data is String && data.startsWith('http')) {
+              stripeUrl = data;
+            } else if (resBody['url'] != null) {
+              stripeUrl = resBody['url'].toString();
+            }
+            if (stripeUrl != null && stripeUrl.isNotEmpty && stripeUrl.startsWith('http')) {
+              final uri = Uri.parse(stripeUrl);
+              debugPrint("💳 [checkoutAuctionOrder] Opening real Stripe Checkout: $stripeUrl");
+              paymentSuccess = await launchUrl(uri, mode: LaunchMode.inAppBrowserView).catchError((_) => false);
+            } else {
+              debugPrint("⚠️ [StripeCheckout] Server did not return a valid Stripe checkout URL or clientSecret.");
+              paymentSuccess = false;
+            }
+          }
+        } else {
+          debugPrint("⚠️ [StripeCheckout] Create checkout session failed with status: ${sessionRes.statusCode}");
+          paymentSuccess = false;
+        }
+      } catch (e) {
+        debugPrint("⚠️ [StripeCheckout] Session launch exception: $e");
+        paymentSuccess = false;
+      }
+
+      if (!paymentSuccess) {
+        debugPrint("⛔ Payment not completed. Aborting order creation.");
+        Get.snackbar(
+          "Payment Required",
+          "Payment was not completed. Order cannot be placed without a valid payment.",
+          backgroundColor: Colors.redAccent,
+          colorText: Colors.white,
+          snackPosition: SnackPosition.BOTTOM,
+        );
+        return false;
+      }
+
+      // 2. Record order payload to /orders
       try {
         final response = await _apiClient.postData("/orders", payload);
         debugPrint("📦 [/orders] status: ${response.statusCode}, body: ${response.body}");
@@ -2067,10 +2233,30 @@ class AgoraLiveController extends GetxController with WidgetsBindingObserver {
           "• Total Paid: \$${totalPaid.toStringAsFixed(0)}\n"
           "• Shipping to: ${street.isEmpty ? "123 Live Stream St" : street}, ${postalCode.isEmpty ? "10001" : postalCode}";
 
-      // 1. Send Order Confirmation message to /message (user inbox)
+      // 1. Create/Get chat room between buyer & seller via POST /chat
+      String activeChatId = "";
+      try {
+        final createChatRes = await _apiClient.postData(ApiUrl.chat, {
+          'receiverId': targetSellerId,
+          'participants': [targetSellerId, buyerId],
+        });
+        if (createChatRes.statusCode == 200 || createChatRes.statusCode == 201) {
+          final resBody = jsonDecode(createChatRes.body);
+          final chatData = resBody['data'] ?? resBody;
+          if (chatData is Map) {
+            activeChatId = (chatData['_id'] ?? chatData['id'] ?? '').toString();
+          }
+        }
+      } catch (e) {
+        debugPrint("⚠️ [/chat] Create chat error: $e");
+      }
+
+      // 2. Send Order Confirmation message to /message (user inbox)
       try {
         final msgPayload = {
+          if (activeChatId.isNotEmpty) "chatId": activeChatId,
           "receiverId": targetSellerId,
+          "text": msgText,
           "message": msgText,
           "isOrder": true,
           "orderId": orderId,
@@ -2109,32 +2295,24 @@ class AgoraLiveController extends GetxController with WidgetsBindingObserver {
     if (msg.trim().isEmpty) return;
     final cleanMsg = msg.trim();
 
-    // Get sender username from ProfileController
-    String usernameStr = "@username";
+    String usernameStr = _getSenderUsername();
     String avatarUrl = "";
     try {
-      final profileCtrl = Get.find<ProfileController>();
-      final uName = profileCtrl.username.value;
-      if (uName.isNotEmpty && uName != "@username") {
-        usernameStr = uName;
-      } else {
-        final fName = profileCtrl.name.value;
-        if (fName.isNotEmpty && fName != "User Name") {
-          usernameStr = "@${fName.replaceAll(' ', '').toLowerCase()}";
-        } else {
-          usernameStr = uName;
-        }
-      }
-      avatarUrl = profileCtrl.profileImageUrl.value;
+      avatarUrl = Get.find<ProfileController>().profileImageUrl.value;
     } catch (_) {}
 
+    final userFormatted = usernameStr.startsWith('@') ? usernameStr : '@$usernameStr';
+
     // Add message locally
-    chatMessages.add({
-      "user": usernameStr.startsWith('@') ? usernameStr : '@$usernameStr',
-      "msg": cleanMsg,
-      "role": role,
-      "userAvatar": avatarUrl,
-    });
+    final existsLocally = chatMessages.any((m) => m['user'] == userFormatted && m['msg'] == cleanMsg);
+    if (!existsLocally) {
+      chatMessages.add({
+        "user": userFormatted,
+        "msg": cleanMsg,
+        "role": role,
+        "userAvatar": avatarUrl,
+      });
+    }
 
     // Broadcast message via Socket.io
     try {
@@ -2143,17 +2321,27 @@ class AgoraLiveController extends GetxController with WidgetsBindingObserver {
       socketService.emitEvent('new message', {
         "chat": streamId.value,
         "chatId": streamId.value,
+        "streamId": streamId.value,
+        "room": streamId.value,
         "content": cleanMsg,
         "text": cleanMsg,
         "message": cleanMsg,
+        "senderName": userFormatted,
+        "username": userFormatted,
+        "user": userFormatted,
+        "name": userFormatted,
+        "fullName": userFormatted,
         "sender": {
           "_id": myUserId,
-          "fullName": usernameStr,
-          "name": usernameStr,
+          "id": myUserId,
+          "fullName": userFormatted,
+          "name": userFormatted,
+          "username": userFormatted,
           "avatar": avatarUrl,
         },
         "senderId": myUserId,
         "userAvatar": avatarUrl,
+        "avatar": avatarUrl,
         "role": role,
         "isLiveStream": true,
       });
@@ -2162,22 +2350,30 @@ class AgoraLiveController extends GetxController with WidgetsBindingObserver {
     }
 
     // Broadcast message via Data Stream (Agora fallback)
-    if (engine != null && _dataStreamId != null) {
+    if (engine != null) {
       try {
-        final payload = jsonEncode({
-          "type": "comment",
-          "username": usernameStr,
-          "message": cleanMsg,
-          "role": role,
-          "avatar": avatarUrl,
-        });
-        final bytes = utf8.encode(payload);
-        await engine!.sendStreamMessage(
-          streamId: _dataStreamId!,
-          data: Uint8List.fromList(bytes),
-          length: bytes.length,
-        );
-        debugPrint("✅ Broadcasted comment via Agora: $payload");
+        if (_dataStreamId == null) {
+          _dataStreamId = await engine?.createDataStream(
+            const DataStreamConfig(syncWithAudio: false, ordered: true),
+          );
+          debugPrint("✅ Created missing DataStreamId: $_dataStreamId");
+        }
+        if (_dataStreamId != null) {
+          final payload = jsonEncode({
+            "type": "comment",
+            "username": usernameStr,
+            "message": cleanMsg,
+            "role": role,
+            "avatar": avatarUrl,
+          });
+          final bytes = utf8.encode(payload);
+          await engine!.sendStreamMessage(
+            streamId: _dataStreamId!,
+            data: Uint8List.fromList(bytes),
+            length: bytes.length,
+          );
+          debugPrint("✅ Broadcasted comment via Agora Data Stream: $payload");
+        }
       } catch (e) {
         debugPrint("❌ Failed to broadcast comment via Agora: $e");
       }
@@ -2185,39 +2381,30 @@ class AgoraLiveController extends GetxController with WidgetsBindingObserver {
   }
 
   void sendLike() {
-    isLiked.toggle();
-    if (isLiked.value) {
-      likeCount.value++;
-      triggerFloatingHeart();
-    } else {
-      if (likeCount.value > 0) likeCount.value--;
+    // 1. Always trigger local floating heart animation for visual user feedback
+    triggerFloatingHeart();
+
+    // 2. If user has ALREADY liked, do NOT send socket/network events again
+    if (isLiked.value) return;
+
+    // 3. Mark as liked and increment like count ONCE
+    isLiked.value = true;
+    likeCount.value++;
+
+    // 4. Send socket event ONLY ONCE
+    try {
+      if (Get.isRegistered<SocketService>()) {
+        final socketService = Get.find<SocketService>();
+        socketService.emitEvent('stream-reaction', {
+          'streamId': streamId.value,
+          'reactionType': 'heart',
+        });
+      }
+    } catch (e) {
+      debugPrint("❌ Failed to emit stream-reaction: $e");
     }
 
-    try {
-      final socketService = Get.find<SocketService>();
-      final myUserId = SharePrefsHelper.getString(SharePrefsHelper.userIdKey);
-      socketService.emitEvent('stream-reaction', {
-        'streamId': streamId.value,
-        'reactionType': 'heart',
-      });
-      socketService.emitEvent('new message', {
-        "chat": streamId.value,
-        "chatId": streamId.value,
-        "content": isLiked.value ? "❤️ Liked the stream" : "💔 Unliked the stream",
-        "text": isLiked.value ? "❤️ Liked the stream" : "💔 Unliked the stream",
-        "message": isLiked.value ? "❤️ Liked the stream" : "💔 Unliked the stream",
-        "sender": {
-          "_id": myUserId,
-          "fullName": "Viewer",
-          "name": "Viewer",
-        },
-        "senderId": myUserId,
-        "role": "viewer",
-        "isLike": true,
-        "isLiveStream": true,
-      });
-    } catch (_) {}
-
+    // 5. Send data stream event ONLY ONCE
     if (engine != null && _dataStreamId != null) {
       try {
         final payload = jsonEncode({
@@ -2229,7 +2416,7 @@ class AgoraLiveController extends GetxController with WidgetsBindingObserver {
           data: Uint8List.fromList(bytes),
           length: bytes.length,
         );
-        debugPrint("✅ Broadcasted like");
+        debugPrint("✅ Broadcasted initial like event");
       } catch (e) {
         debugPrint("❌ Failed to broadcast like: $e");
       }

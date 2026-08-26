@@ -12,12 +12,12 @@ import '../controller/home_controller.dart';
 import 'home_live_preview_widget.dart';
 import '../../../../data/services/api_url.dart';
 import '../../live_stream/controller/agora_live_controller.dart';
-class HomeScreen extends GetView<HomeController> {
+class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    Get.put(HomeController());
+    final controller = Get.put(HomeController());
     return CustomBackground(
       child: SafeArea(
         child: RefreshIndicator(
@@ -48,15 +48,17 @@ class HomeScreen extends GetView<HomeController> {
                 children: [
                   Expanded(
                     child: Obx(
-                      () => Text(
-                        "Hello, ${controller.fullName.value} 👋",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 32.sp,
-                          fontWeight: FontWeight.w900,
+                      () => FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          "Hello, ${controller.fullName.value} 👋",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 22.sp,
+                            fontWeight: FontWeight.w900,
+                          ),
                         ),
-                        overflow: TextOverflow.ellipsis,
-                        maxLines: 1,
                       ),
                     ),
                   ),

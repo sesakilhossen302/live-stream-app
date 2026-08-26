@@ -7,6 +7,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../../data/services/api_url.dart';
 import '../../../../data/services/api_client.dart';
 import '../../../../core/app_route.dart';
+import '../../live_stream/controller/agora_live_controller.dart';
 
 class HomeLivePreviewWidget extends StatefulWidget {
   final String channelName;
@@ -57,9 +58,22 @@ class _HomeLivePreviewWidgetState extends State<HomeLivePreviewWidget> {
 
   Future<void> _initPreviewAgora() async {
     try {
+      if (Get.isRegistered<AgoraLiveController>()) {
+        final agoraCtrl = Get.find<AgoraLiveController>();
+        if (agoraCtrl.isLive.value && agoraCtrl.channelName.value == widget.channelName) {
+          debugPrint("📺 [HomePreview] Stream active in AgoraLiveController for ${widget.channelName}. Skipping secondary engine.");
+          if (mounted) {
+            setState(() {
+              _isLoading = false;
+            });
+          }
+          return;
+        }
+      }
+
       final apiClient = Get.find<ApiClient>();
       final response = await apiClient.getData(
-        "${ApiUrl.agoraToken}?channelName=${widget.channelName}&uid=0&role=publisher"
+        "${ApiUrl.agoraToken}?channelName=${widget.channelName}&uid=0&role=subscriber"
       );
       
       String token = "";
@@ -106,10 +120,10 @@ class _HomeLivePreviewWidgetState extends State<HomeLivePreviewWidget> {
       ));
 
       await _engine!.setChannelProfile(ChannelProfileType.channelProfileLiveBroadcasting);
-      await _engine!.setClientRole(role: ClientRoleType.clientRoleBroadcaster);
+      await _engine!.setClientRole(role: ClientRoleType.clientRoleAudience);
       await _engine!.muteLocalAudioStream(true);
       await _engine!.muteLocalVideoStream(true);
-      await _engine!.muteAllRemoteAudioStreams(true); // mute preview audio so it's a silent preview
+      await _engine!.muteAllRemoteAudioStreams(true); // mute preview audio so it's a silent live preview
       await _engine!.enableVideo();
 
       await _engine!.joinChannel(
@@ -117,6 +131,7 @@ class _HomeLivePreviewWidgetState extends State<HomeLivePreviewWidget> {
         channelId: widget.channelName,
         uid: 0,
         options: const ChannelMediaOptions(
+          clientRoleType: ClientRoleType.clientRoleAudience,
           autoSubscribeAudio: false, // do not subscribe to audio
           autoSubscribeVideo: true,
         ),
@@ -142,7 +157,6 @@ class _HomeLivePreviewWidgetState extends State<HomeLivePreviewWidget> {
     try {
       if (_engine != null) {
         await _engine!.leaveChannel();
-        await _engine!.release();
         _engine = null;
         if (mounted) {
           setState(() {
@@ -179,6 +193,50 @@ class _HomeLivePreviewWidgetState extends State<HomeLivePreviewWidget> {
           child: Icon(Icons.videocam_off_outlined, color: Colors.white24, size: 48),
         ),
       );
+    }
+
+    if (Get.isRegistered<AgoraLiveController>()) {
+      final agoraCtrl = Get.find<AgoraLiveController>();
+      if (agoraCtrl.isLive.value && agoraCtrl.channelName.value == widget.channelName && agoraCtrl.engine != null) {
+        if (agoraCtrl.isHost.value && agoraCtrl.isLocalVideoReady.value) {
+          return ClipRRect(
+            borderRadius: BorderRadius.circular(32.r),
+            child: SizedBox.expand(
+              child: AgoraVideoView(
+                controller: VideoViewController(
+                  rtcEngine: agoraCtrl.engine!,
+                  canvas: const VideoCanvas(
+                    uid: 0,
+                    renderMode: RenderModeType.renderModeHidden,
+                    mirrorMode: VideoMirrorModeType.videoMirrorModeEnabled,
+                    sourceType: VideoSourceType.videoSourceCamera,
+                  ),
+                  useFlutterTexture: false,
+                  useAndroidSurfaceView: true,
+                ),
+              ),
+            ),
+          );
+        } else if (agoraCtrl.remoteJoined.value && agoraCtrl.remoteUid.value != -1) {
+          return ClipRRect(
+            borderRadius: BorderRadius.circular(32.r),
+            child: SizedBox.expand(
+              child: AgoraVideoView(
+                controller: VideoViewController.remote(
+                  rtcEngine: agoraCtrl.engine!,
+                  canvas: VideoCanvas(
+                    uid: agoraCtrl.remoteUid.value,
+                    renderMode: RenderModeType.renderModeHidden,
+                  ),
+                  connection: RtcConnection(channelId: widget.channelName),
+                  useFlutterTexture: false,
+                  useAndroidSurfaceView: true,
+                ),
+              ),
+            ),
+          );
+        }
+      }
     }
 
     if (_remoteJoined && _remoteUid != -1 && _engine != null) {

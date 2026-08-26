@@ -22,8 +22,13 @@ void main() async {
 
   // Initialize Stripe publishable key safely
   try {
-    Stripe.publishableKey = dotenv.env['STRIPE_PUBLISHABLE_KEY'] ?? '';
-    Stripe.instance.applySettings();
+    if (dotenv.isInitialized) {
+      final key = dotenv.env['STRIPE_PUBLISHABLE_KEY'];
+      if (key != null && key.isNotEmpty) {
+        Stripe.publishableKey = key;
+        Stripe.instance.applySettings();
+      }
+    }
   } catch (e) {
     debugPrint("Stripe init error: $e");
   }
@@ -88,12 +93,12 @@ class MyApp extends StatelessWidget {
               try {
                 if (Get.isRegistered<AgoraLiveController>()) {
                   final ctrl = Get.find<AgoraLiveController>();
-                  if (ctrl.isLive.value) {
-                    if (routing.current != AppRoute.hostLive && routing.current != AppRoute.viewerLive) {
-                      ctrl.isMinimized.value = true;
-                    } else {
+                  if (ctrl.isLive.value && !ctrl.isEnding.value) {
+                    if (routing.current == AppRoute.hostLive || routing.current == AppRoute.viewerLive) {
                       ctrl.isMinimized.value = false;
                     }
+                  } else {
+                    ctrl.isMinimized.value = false;
                   }
                 }
               } catch (_) {}

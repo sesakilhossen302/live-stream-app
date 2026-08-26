@@ -51,7 +51,7 @@ class MessageDetailsController extends GetxController {
     }
 
     partnerAvatar.value = args['avatar'] ?? '';
-    partnerId.value = args['participantId'] ?? args['partnerId'] ?? args['userId'] ?? args['sellerId'] ?? '';
+    partnerId.value = (args['participantId'] ?? args['partnerId'] ?? args['userId'] ?? args['sellerId'] ?? args['receiverId'] ?? '').toString();
 
     // Populate order info if passed from a purchase flow
     final order = args['order'];
@@ -69,9 +69,73 @@ class MessageDetailsController extends GetxController {
       fetchMessages(); // initial full load
       _setupSocketListener();
       _startPolling(); // fallback polling every 3s
+    } else if (partnerId.value.isNotEmpty) {
+      _resolveExistingChatRoom(partnerId.value);
     } else {
       _loadMockMessages();
     }
+  }
+
+  Future<void> _resolveExistingChatRoom(String targetPartnerId) async {
+    try {
+      final chatListRes = await _apiClient.getData(ApiUrl.chat);
+      if (chatListRes.statusCode == 200) {
+        final resBody = jsonDecode(chatListRes.body);
+        final List chats = (resBody['data'] is List)
+            ? resBody['data']
+            : (resBody['chats'] is List ? resBody['chats'] : []);
+        for (var c in chats) {
+          if (c is Map) {
+            final String cId = (c['_id'] ?? c['id'] ?? '').toString();
+            final participants = c['participants'] ?? [];
+            bool matches = false;
+            if (participants is List) {
+              for (var p in participants) {
+                final pId = (p is Map ? (p['_id'] ?? p['id']) : p).toString();
+                if (pId == targetPartnerId) {
+                  matches = true;
+                  break;
+                }
+              }
+            }
+            if (matches && cId.isNotEmpty) {
+              chatId.value = cId;
+              Get.log("💬 [MessageCtrl] Joined existing chat room: $cId for partner: $targetPartnerId");
+              fetchAssociatedTrades();
+              fetchMessages();
+              _setupSocketListener();
+              _startPolling();
+              return;
+            }
+          }
+        }
+      }
+
+      final createChatRes = await _apiClient.postData(ApiUrl.chat, {
+        'receiverId': targetPartnerId,
+        'participants': [targetPartnerId],
+      });
+      if (createChatRes.statusCode == 200 || createChatRes.statusCode == 201) {
+        final resBody = jsonDecode(createChatRes.body);
+        final chatData = resBody['data'] ?? resBody;
+        if (chatData is Map) {
+          final String newChatId = (chatData['_id'] ?? chatData['id'] ?? '').toString();
+          if (newChatId.isNotEmpty) {
+            chatId.value = newChatId;
+            Get.log("💬 [MessageCtrl] Resolved new chat room: $newChatId");
+            fetchAssociatedTrades();
+            fetchMessages();
+            _setupSocketListener();
+            _startPolling();
+            return;
+          }
+        }
+      }
+    } catch (e) {
+      Get.log("⚠️ [MessageCtrl] Resolve existing chat error: $e");
+    }
+
+    _loadMockMessages();
   }
 
   Future<void> fetchPartnerDetails(String userId) async {

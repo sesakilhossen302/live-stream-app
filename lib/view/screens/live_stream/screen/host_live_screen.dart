@@ -6,6 +6,7 @@ import 'package:get/get.dart';
 import '../../../../global/widgets/custom_background.dart';
 import '../controller/agora_live_controller.dart';
 import 'dart:convert';
+import '../../../../core/app_route.dart';
 import '../../../../data/services/api_url.dart';
 import '../../../../data/helpers/shared_prefe.dart';
 import '../../../../data/services/api_client.dart';
@@ -47,7 +48,7 @@ class _HostLiveScreenState extends State<HostLiveScreen> {
         return false;
       },
       child: Scaffold(
-        backgroundColor: Colors.transparent,
+        backgroundColor: Colors.black,
         body: Stack(
           children: [
             // ── Local Camera Preview
@@ -62,6 +63,7 @@ class _HostLiveScreenState extends State<HostLiveScreen> {
                         uid: 0,
                         renderMode: RenderModeType.renderModeHidden,
                         mirrorMode: VideoMirrorModeType.videoMirrorModeEnabled,
+                        sourceType: VideoSourceType.videoSourceCamera,
                       ),
                       useFlutterTexture: false,
                       useAndroidSurfaceView: true,
@@ -352,6 +354,10 @@ class _HostLiveScreenState extends State<HostLiveScreen> {
                   _sideButton(Icons.flip_camera_ios_rounded, Colors.white24, onTap: () {
                     ctrl.engine?.switchCamera();
                   }),
+                  SizedBox(height: 16.h),
+                  _sideButton(Icons.gavel_rounded, const Color(0xFF8B9BFF), onTap: () {
+                    _showStartNewAuctionSheet();
+                  }),
                 ],
               )),
             ),
@@ -502,7 +508,34 @@ class _HostLiveScreenState extends State<HostLiveScreen> {
                   textAlign: TextAlign.center,
                 ),
               ],
-              SizedBox(height: 32.h),
+              SizedBox(height: 24.h),
+              if (hasWinner) ...[
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      ctrl.showWinnerOverlay.value = false;
+                      Get.toNamed(AppRoute.messageDetails, arguments: {
+                        "receiverId": ctrl.lastBidderId.value,
+                        "userName": ctrl.lastBidderName.value,
+                        "name": ctrl.lastBidderName.value,
+                      });
+                    },
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      side: BorderSide(color: Colors.white.withOpacity(0.2)),
+                      padding: EdgeInsets.symmetric(vertical: 12.h),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.r)),
+                    ),
+                    icon: Icon(Icons.chat_bubble_outline_rounded, color: const Color(0xFF8B9BFF), size: 18.sp),
+                    label: Text(
+                      "Chat with Winner (@$winnerName)",
+                      style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w800),
+                    ),
+                  ),
+                ),
+                SizedBox(height: 10.h),
+              ],
               Row(
                 children: [
                   Expanded(

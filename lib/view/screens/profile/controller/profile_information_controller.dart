@@ -74,12 +74,7 @@ class ProfileInformationController extends GetxController {
 
   Future<void> pickImage(ImageSource source) async {
     try {
-      final XFile? image = await _picker.pickImage(
-        source: source,
-        maxWidth: 1080,
-        maxHeight: 1080,
-        imageQuality: 85,
-      );
+      final XFile? image = await _picker.pickImage(source: source);
       if (image != null) {
         selectedImage.value = File(image.path);
       }

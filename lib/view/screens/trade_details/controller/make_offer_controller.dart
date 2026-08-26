@@ -112,12 +112,7 @@ class MakeOfferController extends GetxController {
 
   Future<void> pickCustomImage() async {
     try {
-      final XFile? image = await _picker.pickImage(
-        source: ImageSource.gallery,
-        imageQuality: 20,
-        maxWidth: 600,
-        maxHeight: 600,
-      );
+      final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
       if (image != null) {
         customImageFile.value = File(image.path);
       }

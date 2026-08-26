@@ -8,8 +8,15 @@ import '../../../../data/services/api_client.dart';
 import '../../../../data/services/api_url.dart';
 
 class LoginController extends GetxController {
-  final emailController = TextEditingController();
-  final passwordController = TextEditingController();
+  late TextEditingController emailController;
+  late TextEditingController passwordController;
+
+  @override
+  void onInit() {
+    super.onInit();
+    emailController = TextEditingController();
+    passwordController = TextEditingController();
+  }
 
   final RxBool isLoading = false.obs;
   final RxBool isObscured = true.obs;

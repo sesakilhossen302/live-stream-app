@@ -303,28 +303,13 @@ class ApiClient {
     Future<http.Response> Function() retryAction,
   ) async {
     if (response.statusCode == 401 && uri != "/auth/refresh-token") {
-      final bodyStr = response.body;
-      final isExpired = bodyStr.contains("expired") || 
-                        bodyStr.contains("Expired") || 
-                        bodyStr.contains("Token") || 
-                        bodyStr.contains("token") || 
-                        bodyStr.contains("unauthorized") ||
-                        bodyStr.contains("Unauthorized") ||
-                        bodyStr.contains("permission") ||
-                        bodyStr.contains("Permission");
-      
-      if (isExpired) {
-        final success = await _refreshToken();
-        if (success) {
-          // Token refresh succeeded, retry request with new headers
-          return await retryAction();
-        } else {
-          // Refresh failed, log out user and redirect to Login
-          await _logoutUser(message: "Your session has expired. Please log in again.");
-        }
+      final success = await _refreshToken();
+      if (success) {
+        // Token refresh succeeded, retry request with new token
+        return await retryAction();
       } else {
-        // Other 401 triggers logout
-        await _logoutUser(message: "Unauthorized access. Please log in again.");
+        // Refresh failed, log out user and redirect to Login
+        await _logoutUser(message: "Your session has expired. Please log in again.");
       }
     } else if (response.statusCode == 403) {
       try {
@@ -334,17 +319,8 @@ class ApiClient {
             message.toLowerCase().contains("admin approval") ||
             message.toLowerCase().contains("seller account")) {
           _showVerificationPendingDialog(message);
-        } else {
-          // Permission denied / forbidden / expired token -> logout and redirect to Login screen
-          await _logoutUser(
-            message: message.isNotEmpty 
-                ? message 
-                : "Permission denied or session expired. Please log in again.",
-          );
         }
-      } catch (e) {
-        await _logoutUser(message: "Permission denied. Please log in again.");
-      }
+      } catch (_) {}
     }
     return response;
   }
@@ -371,22 +347,19 @@ class ApiClient {
       final response = await http.post(url, headers: headers, body: body);
       if (response.statusCode == 200 || response.statusCode == 201) {
         final resBody = jsonDecode(response.body);
-        final success = resBody['success'] == true;
-        if (success) {
-          final data = resBody['data'] ?? resBody;
-          final newAccessToken = data['accessToken'] ?? data['token'] ?? "";
-          final newRefreshToken = data['refreshToken'] ?? "";
+        final data = resBody['data'] is Map ? resBody['data'] : resBody;
+        final newAccessToken = data['accessToken'] ?? data['token'] ?? resBody['accessToken'] ?? "";
+        final newRefreshToken = data['refreshToken'] ?? resBody['refreshToken'] ?? "";
 
-          if (newAccessToken.isNotEmpty) {
-            await SharePrefsHelper.setString(SharePrefsHelper.accessTokenKey, newAccessToken);
-            if (newRefreshToken.isNotEmpty) {
-              await SharePrefsHelper.setString(SharePrefsHelper.refreshTokenKey, newRefreshToken);
-            }
-            if (kDebugMode) {
-              print("✅ [API CLIENT] Token refresh successful. Saved to SharedPreferences.");
-            }
-            return true;
+        if (newAccessToken.toString().isNotEmpty) {
+          await SharePrefsHelper.setString(SharePrefsHelper.accessTokenKey, newAccessToken.toString());
+          if (newRefreshToken.toString().isNotEmpty) {
+            await SharePrefsHelper.setString(SharePrefsHelper.refreshTokenKey, newRefreshToken.toString());
           }
+          if (kDebugMode) {
+            print("✅ [API CLIENT] Token refresh successful. Saved to SharedPreferences.");
+          }
+          return true;
         }
       }
       if (kDebugMode) {

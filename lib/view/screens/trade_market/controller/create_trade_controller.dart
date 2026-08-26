@@ -51,11 +51,7 @@ class CreateTradeController extends GetxController {
 
   Future<void> pickImages() async {
     try {
-      final List<XFile> images = await _picker.pickMultiImage(
-        imageQuality: 20,
-        maxWidth: 600,
-        maxHeight: 600,
-      );
+      final List<XFile> images = await _picker.pickMultiImage();
       if (images.isNotEmpty) {
         selectedImages.addAll(images.map((img) => File(img.path)));
         selectedImageIndex.value = selectedImages.length - 1; // set preview to last selected

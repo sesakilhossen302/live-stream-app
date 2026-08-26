@@ -81,10 +81,6 @@ class SpinWheelController extends GetxController with GetSingleTickerProviderSta
       vsync: this,
       duration: const Duration(seconds: 4),
     );
-<<<<<<< Updated upstream
-
-=======
->>>>>>> Stashed changes
     // Feature 6: Socket listener for server-triggered spin-result
     _setupSocketListeners();
   }

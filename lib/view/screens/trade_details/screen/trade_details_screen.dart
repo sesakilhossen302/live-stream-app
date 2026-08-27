@@ -360,9 +360,12 @@ class TradeDetailsScreen extends GetView<TradeDetailsController> {
           PageView.builder(
             itemCount: imageUrls.length,
             onPageChanged: (i) => controller.currentImageIndex.value = i,
-            itemBuilder: (_, i) => Container(
-              color: const Color(0xFFF0F0F0),
-              child: _buildDetailsProductImage(imageUrls[i], fit: BoxFit.contain),
+            itemBuilder: (context, i) => GestureDetector(
+              onTap: () => _openFullScreenImageViewer(context, imageUrls, i),
+              child: Container(
+                color: const Color(0xFFF0F0F0),
+                child: _buildDetailsProductImage(imageUrls[i], fit: BoxFit.contain),
+              ),
             ),
           ),
 
@@ -394,6 +397,28 @@ class TradeDetailsScreen extends GetView<TradeDetailsController> {
                   _buildBadge("\$$estValue EST. VALUE", Colors.black.withOpacity(0.75)),
                 ],
               ],
+            ),
+          ),
+
+          // Fullscreen expand icon button
+          Positioned(
+            top: 16.h,
+            right: 16.w,
+            child: GestureDetector(
+              onTap: () => _openFullScreenImageViewer(
+                Get.context!,
+                imageUrls,
+                controller.currentImageIndex.value,
+              ),
+              child: Container(
+                padding: EdgeInsets.all(8.r),
+                decoration: BoxDecoration(
+                  color: Colors.black54,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white24),
+                ),
+                child: Icon(Icons.fullscreen_rounded, color: Colors.white, size: 22.sp),
+              ),
             ),
           ),
 
@@ -436,6 +461,132 @@ class TradeDetailsScreen extends GetView<TradeDetailsController> {
           ),
         ],
       ),
+    );
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // FULL SCREEN INTERACTIVE IMAGE VIEWER LIGHTBOX
+  // ──────────────────────────────────────────────────────────────────────────
+  void _openFullScreenImageViewer(BuildContext context, List<String> imageUrls, int initialIndex) {
+    if (imageUrls.isEmpty || (imageUrls.length == 1 && imageUrls[0].isEmpty)) return;
+    final currentIndex = initialIndex.obs;
+    final PageController pageController = PageController(initialPage: initialIndex);
+
+    Get.to(
+      () => Scaffold(
+        backgroundColor: Colors.black,
+        body: SafeArea(
+          child: Stack(
+            children: [
+              // Interactive Zoomable PageView
+              PageView.builder(
+                controller: pageController,
+                itemCount: imageUrls.length,
+                onPageChanged: (idx) => currentIndex.value = idx,
+                itemBuilder: (context, idx) {
+                  return InteractiveViewer(
+                    minScale: 0.8,
+                    maxScale: 4.0,
+                    child: Center(
+                      child: _buildDetailsProductImage(imageUrls[idx], fit: BoxFit.contain),
+                    ),
+                  );
+                },
+              ),
+
+              // Top Bar with Close button & Counter
+              Positioned(
+                top: 16.h,
+                left: 16.w,
+                right: 16.w,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    GestureDetector(
+                      onTap: () => Get.back(),
+                      child: Container(
+                        padding: EdgeInsets.all(10.r),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.15),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(Icons.close_rounded, color: Colors.white, size: 22.sp),
+                      ),
+                    ),
+                    Obx(
+                      () => Container(
+                        padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 6.h),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(20.r),
+                        ),
+                        child: Text(
+                          "${currentIndex.value + 1} / ${imageUrls.length}",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 14.sp,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Bottom Thumbnails Strip (if multiple images)
+              if (imageUrls.length > 1)
+                Positioned(
+                  bottom: 24.h,
+                  left: 0,
+                  right: 0,
+                  child: Center(
+                    child: Obx(
+                      () => SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        padding: EdgeInsets.symmetric(horizontal: 16.w),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: List.generate(imageUrls.length, (idx) {
+                            final isSelected = currentIndex.value == idx;
+                            return GestureDetector(
+                              onTap: () {
+                                currentIndex.value = idx;
+                                pageController.animateToPage(
+                                  idx,
+                                  duration: const Duration(milliseconds: 300),
+                                  curve: Curves.easeInOut,
+                                );
+                              },
+                              child: Container(
+                                margin: EdgeInsets.symmetric(horizontal: 6.w),
+                                width: 52.w,
+                                height: 52.w,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(12.r),
+                                  border: Border.all(
+                                    color: isSelected ? const Color(0xFF8B9BFF) : Colors.white24,
+                                    width: isSelected ? 2.5 : 1,
+                                  ),
+                                ),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(10.r),
+                                  child: _buildDetailsProductImage(imageUrls[idx], fit: BoxFit.cover),
+                                ),
+                              ),
+                            );
+                          }),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+      transition: Transition.fadeIn,
+      fullscreenDialog: true,
     );
   }
 

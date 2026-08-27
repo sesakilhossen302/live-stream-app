@@ -4,7 +4,6 @@ import 'package:get/get.dart';
 import 'dart:convert';
 import '../../../../global/widgets/custom_background.dart';
 import '../controller/discover_controller.dart';
-import '../../trade_details/screen/trade_details_screen.dart';
 import '../../../../core/app_route.dart';
 import '../../../../data/services/api_url.dart';
 import '../../../../global/widgets/custom_shimmer.dart';
@@ -39,8 +38,11 @@ class DiscoverScreen extends GetView<DiscoverController> {
                       _buildFilterBar(),
                       SizedBox(height: 32.h),
 
-                      // Tabs handle their own bottom sections now
+                      // Tabs or Search Results
                       Obx(() {
+                        if (controller.isSearching) {
+                          return _buildSearchResultsView();
+                        }
                         switch (controller.selectedFilter.value) {
                           case 1:
                             return _buildLiveShowsTab();
@@ -50,7 +52,7 @@ class DiscoverScreen extends GetView<DiscoverController> {
                             return _buildAllTab();
                         }
                       }),
-                      SizedBox(height: 140.h),
+                      SizedBox(height: 190.h),
                     ],
                   ),
                 ),
@@ -63,6 +65,183 @@ class DiscoverScreen extends GetView<DiscoverController> {
   }
 
   // --- TAB BUILDERS ---
+
+  Widget _buildSearchResultsView() {
+    return Obx(() {
+      final query = controller.searchQuery.value.trim();
+      final liveResults = controller.filteredLiveShows;
+      final tradeResults = controller.filteredTradeMarketItems;
+      final totalCount = liveResults.length + tradeResults.length;
+
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header info
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Search Results",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 22.sp,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  SizedBox(height: 4.h),
+                  Text(
+                    "Found $totalCount matches for \"$query\"",
+                    style: TextStyle(
+                      color: const Color(0xFF8B9BFF),
+                      fontSize: 13.sp,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+              TextButton.icon(
+                onPressed: () => controller.clearSearch(),
+                icon: Icon(Icons.close_rounded, color: Colors.white60, size: 16.sp),
+                label: Text(
+                  "Clear",
+                  style: TextStyle(
+                    color: Colors.white60,
+                    fontSize: 13.sp,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                style: TextButton.styleFrom(
+                  padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+                  backgroundColor: Colors.white.withValues(alpha: 0.05),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 24.h),
+
+          if (totalCount == 0)
+            _buildEmptySearchState(query)
+          else ...[
+            // 1. Live Shows Results
+            if (liveResults.isNotEmpty) ...[
+              _buildSectionHeader(
+                "Live Streams (${liveResults.length})",
+                onSeeAll: () => Get.toNamed(AppRoute.allLiveShows),
+                seeAllText: "VIEW ALL →",
+              ),
+              SizedBox(height: 16.h),
+              ...liveResults.map((show) {
+                return Padding(
+                  padding: EdgeInsets.only(bottom: 20.h),
+                  child: GestureDetector(
+                    onTap: () => Get.toNamed(AppRoute.viewerLive, arguments: show['raw']),
+                    child: _buildLiveCard(
+                      show['title'] ?? 'Live Show',
+                      show['host'] ?? 'Host',
+                      show['viewers'] ?? '0',
+                      show['image'] ?? '',
+                      show['hostAvatar'] ?? '',
+                    ),
+                  ),
+                );
+              }),
+              SizedBox(height: 24.h),
+            ],
+
+            // 2. Deals & Trade Items Results
+            if (tradeResults.isNotEmpty) ...[
+              _buildSectionHeader(
+                "Deals & Trade Items (${tradeResults.length})",
+              ),
+              SizedBox(height: 16.h),
+              ...tradeResults.map((item) {
+                return Padding(
+                  padding: EdgeInsets.only(bottom: 16.h),
+                  child: _buildTradeListItem(item),
+                );
+              }),
+            ],
+          ],
+
+          SizedBox(height: 32.h),
+          _buildTrendingTagsSection(),
+        ],
+      );
+    });
+  }
+
+  Widget _buildEmptySearchState(String query) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 36.h),
+      decoration: BoxDecoration(
+        color: const Color(0xFF11111A),
+        borderRadius: BorderRadius.circular(32.r),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+      ),
+      child: Column(
+        children: [
+          Container(
+            padding: EdgeInsets.all(18.r),
+            decoration: BoxDecoration(
+              color: const Color(0xFF8B9BFF).withValues(alpha: 0.12),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.search_off_rounded,
+              color: const Color(0xFF8B9BFF),
+              size: 40.sp,
+            ),
+          ),
+          SizedBox(height: 18.h),
+          Text(
+            "No results found for\n\"$query\"",
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 18.sp,
+              fontWeight: FontWeight.w900,
+              height: 1.2,
+            ),
+          ),
+          SizedBox(height: 8.h),
+          Text(
+            "Try searching with different keywords or check out trending tags below.",
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.white38,
+              fontSize: 13.sp,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          SizedBox(height: 20.h),
+          ElevatedButton(
+            onPressed: () => controller.clearSearch(),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF8B9BFF),
+              foregroundColor: Colors.black,
+              padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20.r),
+              ),
+              elevation: 0,
+            ),
+            child: Text(
+              "Clear Search",
+              style: TextStyle(
+                fontSize: 14.sp,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _buildAllTab() {
     return Column(
@@ -248,36 +427,42 @@ class DiscoverScreen extends GetView<DiscoverController> {
     return Container(
       height: 64.h,
       decoration: BoxDecoration(
-        color: Colors.transparent,
+        color: const Color(0xFF11111A),
         borderRadius: BorderRadius.circular(32.r),
-        border: Border.all(color: Colors.white.withOpacity(0.2), width: 1.5),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.15), width: 1.5),
       ),
       padding: EdgeInsets.symmetric(horizontal: 22.w),
       child: Row(
         children: [
-          Icon(Icons.search, color: Colors.white, size: 24.sp),
+          Icon(Icons.search_rounded, color: const Color(0xFF8B9BFF), size: 24.sp),
           SizedBox(width: 14.w),
           Expanded(
             child: TextField(
               controller: controller.searchController,
               onChanged: (val) => controller.searchQuery.value = val,
+              onSubmitted: (val) => controller.performServerSearch(val),
+              textInputAction: TextInputAction.search,
               style: TextStyle(color: Colors.white, fontSize: 16.sp),
               cursorColor: const Color(0xFF8B9BFF),
               cursorWidth: 2.w,
               decoration: InputDecoration(
-                hintText: "Search deals & more",
-                hintStyle: TextStyle(color: Colors.white38, fontSize: 16.sp, fontWeight: FontWeight.w500),
+                hintText: "Search deals, streams & more...",
+                hintStyle: TextStyle(color: Colors.white38, fontSize: 15.sp, fontWeight: FontWeight.w500),
                 border: InputBorder.none,
               ),
             ),
           ),
           Obx(() => controller.searchQuery.value.isNotEmpty
               ? GestureDetector(
-                  onTap: () {
-                    controller.searchController.clear();
-                    controller.searchQuery.value = "";
-                  },
-                  child: Icon(Icons.clear, color: Colors.white, size: 20.sp),
+                  onTap: () => controller.clearSearch(),
+                  child: Container(
+                    padding: EdgeInsets.all(4.r),
+                    decoration: BoxDecoration(
+                      color: Colors.white12,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(Icons.close_rounded, color: Colors.white, size: 16.sp),
+                  ),
                 )
               : const SizedBox.shrink()),
         ],
@@ -581,15 +766,38 @@ class DiscoverScreen extends GetView<DiscoverController> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text("Trending Tags", style: TextStyle(color: Colors.white, fontSize: 20.sp, fontWeight: FontWeight.w900)),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text("Trending Tags", style: TextStyle(color: Colors.white, fontSize: 20.sp, fontWeight: FontWeight.w900)),
+              Text("Tap to search", style: TextStyle(color: Colors.white38, fontSize: 12.sp, fontWeight: FontWeight.w600)),
+            ],
+          ),
           SizedBox(height: 20.h),
           Wrap(
             spacing: 12.w,
             runSpacing: 12.h,
-            children: controller.trendingTags.map((tag) => Container(
-              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
-              decoration: BoxDecoration(color: const Color(0xFF1C1C28), borderRadius: BorderRadius.circular(12.r)),
-              child: Text(tag, style: TextStyle(color: Colors.white60, fontSize: 13.sp, fontWeight: FontWeight.w700)),
+            children: controller.trendingTags.map((tag) => GestureDetector(
+              onTap: () => controller.onTagSelected(tag),
+              child: Container(
+                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1C1C28),
+                  borderRadius: BorderRadius.circular(14.r),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.tag_rounded, color: const Color(0xFF8B9BFF), size: 14.sp),
+                    SizedBox(width: 4.w),
+                    Text(
+                      tag.replaceAll('#', ''),
+                      style: TextStyle(color: Colors.white70, fontSize: 13.sp, fontWeight: FontWeight.w700),
+                    ),
+                  ],
+                ),
+              ),
             )).toList(),
           ),
         ],

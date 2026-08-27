@@ -4,6 +4,8 @@ import 'package:socket_io_client/socket_io_client.dart' as IO;
 import 'package:url_launcher/url_launcher.dart';
 import '../helpers/shared_prefe.dart';
 import 'api_url.dart';
+import '../../view/screens/main/controller/main_controller.dart';
+import '../../view/screens/messages/controller/messages_controller.dart';
 
 class _SocketListener {
   final String event;
@@ -59,10 +61,37 @@ class SocketService extends GetxService {
       );
 
       // Register global real-time notifications
+      void handleGlobalMessageReceived(dynamic data) {
+        Get.log('💬 [SocketService] Global message received: $data');
+        if (Get.isRegistered<MainController>()) {
+          Get.find<MainController>().unreadMessageCount.value++;
+          Get.find<MainController>().fetchUnreadMessageCount();
+        }
+        if (Get.isRegistered<MessagesController>()) {
+          Get.find<MessagesController>().fetchChatRooms();
+        }
+      }
+
+      socket?.on('message received', handleGlobalMessageReceived);
+      socket?.on('messageReceived', handleGlobalMessageReceived);
+      socket?.on('new message', handleGlobalMessageReceived);
+      socket?.on('newMessage', handleGlobalMessageReceived);
+      socket?.on('message', handleGlobalMessageReceived);
+      socket?.on('chat-message', handleGlobalMessageReceived);
+      socket?.on('receive-message', handleGlobalMessageReceived);
+      socket?.on('receiveMessage', handleGlobalMessageReceived);
+      socket?.on('notification', (_) {
+        if (Get.isRegistered<MainController>()) {
+          Get.find<MainController>().fetchUnreadMessageCount();
+        }
+        if (Get.isRegistered<MessagesController>()) {
+          Get.find<MessagesController>().fetchChatRooms();
+        }
+      });
+
       socket?.on('auction-won', (data) {
         Get.log('🏆 [SocketService] auction-won event: $data');
         if (data is Map) {
-          final title = data['productTitle'] ?? 'Product';
           final bid = data['winningBid'] ?? '0';
           final checkoutUrl = data['checkoutUrl']?.toString() ?? '';
           final message = data['message'] ?? 'You won the auction!';
@@ -157,6 +186,11 @@ class SocketService extends GetxService {
         isConnected.value = true;
         Get.log('✅ [SocketService] Connected: ${socket?.id}');
         socket?.emit('setup', userId);
+        socket?.emit('join', userId);
+        socket?.emit('join-user', userId);
+        socket?.emit('join user', userId);
+        socket?.emit('user-online', userId);
+        socket?.emit('user-connected', userId);
 
         // Rejoin active chat room
         if (_activeChatId != null) {

@@ -47,6 +47,9 @@ dependencies:
   flutter_stripe: ^11.5.0
   flutter_dotenv: ^5.2.1
   cached_network_image: ^3.4.1
+  firebase_core: ^4.14.0
+  firebase_messaging: ^16.6.0
+  flutter_local_notifications: ^22.3.0
 
 
 dev_dependencies:

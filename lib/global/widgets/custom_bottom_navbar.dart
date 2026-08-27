@@ -91,6 +91,8 @@ class CustomBottomNavbar extends StatelessWidget {
   Widget _navItem(MainController controller, int index, String iconPath, String label) {
     return Obx(() {
       bool isSelected = controller.currentIndex.value == index;
+      final int unreadCount = index == 1 ? controller.unreadMessageCount.value : 0;
+
       return GestureDetector(
         onTap: () {
           controller.changeIndex(index);
@@ -119,16 +121,55 @@ class CustomBottomNavbar extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              SizedBox(
-                width: 22.w,
-                height: 22.w,
-                child: SvgPicture.asset(
-                  iconPath,
-                  colorFilter: ColorFilter.mode(
-                    isSelected ? Colors.black : Colors.white70,
-                    BlendMode.srcIn,
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  SizedBox(
+                    width: 22.w,
+                    height: 22.w,
+                    child: SvgPicture.asset(
+                      iconPath,
+                      colorFilter: ColorFilter.mode(
+                        isSelected ? Colors.black : Colors.white70,
+                        BlendMode.srcIn,
+                      ),
+                    ),
                   ),
-                ),
+                  if (unreadCount > 0)
+                    Positioned(
+                      top: -6.h,
+                      right: -8.w,
+                      child: Container(
+                        padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.h),
+                        constraints: BoxConstraints(minWidth: 16.r, minHeight: 16.r),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFF4B67),
+                          borderRadius: BorderRadius.circular(10.r),
+                          border: Border.all(
+                            color: isSelected ? const Color(0xFF8B9BFF) : const Color(0xFF0F0B1E),
+                            width: 1.5.w,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFFFF4B67).withValues(alpha: 0.6),
+                              blurRadius: 8.r,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          unreadCount > 99 ? "99+" : "$unreadCount",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 9.sp,
+                            fontWeight: FontWeight.w900,
+                            height: 1,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
               ),
               if (isSelected) ...[
                 SizedBox(width: 8.w),

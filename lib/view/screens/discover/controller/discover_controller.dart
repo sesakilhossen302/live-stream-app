@@ -282,6 +282,24 @@ class DiscoverController extends GetxController {
     }
   }
 
+  bool get isSearching => searchQuery.value.trim().isNotEmpty;
+
+  int get totalSearchResultsCount => filteredLiveShows.length + filteredTradeMarketItems.length;
+
+  List<Map<String, dynamic>> get filteredLiveShows {
+    final query = searchQuery.value.toLowerCase().trim();
+    if (query.isEmpty) return liveShows;
+    return liveShows.where((show) {
+      final title = (show['title'] ?? '').toString().toLowerCase();
+      final host = (show['host'] ?? '').toString().toLowerCase();
+      final raw = show['raw'];
+      final prodTitle = (raw is Map && raw['productId'] is Map)
+          ? (raw['productId']['title'] ?? raw['productId']['name'] ?? '').toString().toLowerCase()
+          : '';
+      return title.contains(query) || host.contains(query) || prodTitle.contains(query);
+    }).toList();
+  }
+
   List<Map<String, dynamic>> get filteredTradeMarketItems {
     final query = searchQuery.value.toLowerCase().trim();
     if (query.isEmpty) return tradeMarketItems;
@@ -289,8 +307,78 @@ class DiscoverController extends GetxController {
       final title = item['title']?.toString().toLowerCase() ?? "";
       final tag = item['tag']?.toString().toLowerCase() ?? "";
       final lookingFor = item['lookingFor']?.toString().toLowerCase() ?? "";
-      return title.contains(query) || tag.contains(query) || lookingFor.contains(query);
+      final raw = item['raw'];
+      final desc = (raw is Map ? (raw['description'] ?? '') : '').toString().toLowerCase();
+      final category = (raw is Map && raw['category'] is Map)
+          ? (raw['category']['name'] ?? raw['category']['title'] ?? '').toString().toLowerCase()
+          : '';
+      return title.contains(query) ||
+          tag.contains(query) ||
+          lookingFor.contains(query) ||
+          desc.contains(query) ||
+          category.contains(query);
     }).toList();
+  }
+
+  void onTagSelected(String tag) {
+    final clean = tag.replaceAll('#', '').trim();
+    searchController.text = clean;
+    searchQuery.value = clean;
+  }
+
+  void clearSearch() {
+    searchController.clear();
+    searchQuery.value = "";
+  }
+
+  Future<void> performServerSearch(String query) async {
+    final q = query.trim();
+    if (q.isEmpty) return;
+    isLoading.value = true;
+    try {
+      final response = await _apiClient.getData("${ApiUrl.products}?searchTerm=${Uri.encodeComponent(q)}");
+      if (response.statusCode == 200) {
+        final body = jsonDecode(response.body);
+        List data = [];
+        if (body['data'] is List) {
+          data = body['data'];
+        } else if (body['data'] is Map && body['data']['doc'] is List) {
+          data = body['data']['doc'];
+        } else if (body['data'] is Map && body['data']['products'] is List) {
+          data = body['data']['products'];
+        } else if (body['products'] is List) {
+          data = body['products'];
+        }
+        if (data.isNotEmpty) {
+          final parsed = data.map((item) {
+            final title = item['title'] ?? "Unknown Item";
+            final priceVal = item['estValue'] ?? 0;
+            final condition = item['condition'] ?? "GOOD";
+            String imageUrl = "";
+            final imagesList = item['images'];
+            if (imagesList != null && imagesList is List && imagesList.isNotEmpty) {
+              final imagePath = imagesList[0].toString();
+              imageUrl = (imagePath.startsWith('http') || imagePath.startsWith('data:image/'))
+                  ? imagePath
+                  : "${ApiUrl.imageBaseUrl}${imagePath.startsWith('/') ? imagePath : '/$imagePath'}";
+            }
+            return <String, dynamic>{
+              "title": title,
+              "value": "\$${priceVal.toString()}",
+              "lookingFor": (item['description'] ?? "Trade for equal value").toString(),
+              "tag": condition.toString().toUpperCase(),
+              "image": imageUrl,
+              "raw": item,
+            };
+          }).toList();
+          tradeMarketItems.assignAll(parsed);
+        }
+      }
+    } catch (e) {
+      Get.log("Server search error: $e");
+    } finally {
+      isLoading.value = false;
+    }
   }
 
   void changeFilter(int index) {

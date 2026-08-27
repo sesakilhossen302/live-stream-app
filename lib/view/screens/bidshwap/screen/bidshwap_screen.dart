@@ -5,6 +5,7 @@ import 'package:get/get.dart';
 import 'dart:convert';
 import '../../../../core/app_route.dart';
 import '../../../../global/widgets/custom_background.dart';
+import '../../../../global/widgets/custom_shimmer.dart';
 import '../../profile/controller/profile_controller.dart';
 import '../controller/bidshwap_controller.dart';
 import '../model/trade_model.dart';
@@ -75,13 +76,11 @@ class BidShwapScreen extends GetView<BidShwapController> {
                     
                     // Trade List
                     Obx(() {
-                      if (controller.isLoading.value) {
-                        return Padding(
-                          padding: EdgeInsets.symmetric(vertical: 40.h),
-                          child: const Center(
-                            child: CircularProgressIndicator(
-                              color: Color(0xFF8B9BFF),
-                            ),
+                      if (controller.isLoading.value && controller.trades.isEmpty) {
+                        return Column(
+                          children: List.generate(
+                            3,
+                            (index) => _buildTradeCardShimmer(),
                           ),
                         );
                       }
@@ -118,7 +117,7 @@ class BidShwapScreen extends GetView<BidShwapController> {
                       );
                     }),
                     
-                    SizedBox(height: 120.h),
+                    SizedBox(height: 190.h),
                   ],
                 ),
               ),
@@ -196,212 +195,220 @@ class BidShwapScreen extends GetView<BidShwapController> {
   }
 
   Widget _buildTradeCard(TradeModel trade) {
-    return Container(
-      margin: EdgeInsets.only(bottom: 20.h),
-      padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 18.h),
-      decoration: BoxDecoration(
-        color: const Color(0xFF161622),
-        borderRadius: BorderRadius.circular(28.r),
-      ),
-      child: Column(
-        children: [
-          // User Info
-          Row(
-            children: [
-              CircleAvatar(
-                radius: 18.r,
-                backgroundColor: Colors.white10,
-                child: ClipOval(
-                  child: Image.network(
-                    trade.userAvatar,
-                    width: 36.r,
-                    height: 36.r,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => Image.network(
-                      "",
+    return GestureDetector(
+      onTap: () => Get.toNamed(AppRoute.tradeDetails, arguments: trade.rawProduct),
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        margin: EdgeInsets.only(bottom: 20.h),
+        padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 18.h),
+        decoration: BoxDecoration(
+          color: const Color(0xFF161622),
+          borderRadius: BorderRadius.circular(28.r),
+        ),
+        child: Column(
+          children: [
+            // User Info
+            Row(
+              children: [
+                CircleAvatar(
+                  radius: 18.r,
+                  backgroundColor: Colors.white10,
+                  child: ClipOval(
+                    child: Image.network(
+                      trade.userAvatar,
                       width: 36.r,
                       height: 36.r,
                       fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => Image.network(
+                        "",
+                        width: 36.r,
+                        height: 36.r,
+                        fit: BoxFit.cover,
+                      ),
                     ),
                   ),
                 ),
-              ),
-              SizedBox(width: 12.w),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                SizedBox(width: 12.w),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(trade.userName, style: TextStyle(color: Colors.white, fontSize: 16.sp, fontWeight: FontWeight.w900)),
+                      Row(
+                        children: [
+                          Icon(Icons.star, color: const Color(0xFFFF8BFF), size: 12.sp),
+                          SizedBox(width: 4.w),
+                          Text("${trade.userRating} (${trade.tradesCount})", style: TextStyle(color: Colors.white38, fontSize: 11.sp, fontWeight: FontWeight.w800)),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.04),
+                    borderRadius: BorderRadius.circular(10.r),
+                  ),
+                  child: Text("VERIFIED AVAILABLE", style: TextStyle(color: const Color(0xFF8B9BFF), fontSize: 9.sp, fontWeight: FontWeight.w900)),
+                ),
+              ],
+            ),
+            
+            SizedBox(height: 16.h),
+            
+            // Offered Item & Looking For Section
+            Stack(
+              alignment: Alignment.center,
+              clipBehavior: Clip.none,
+              children: [
+                Column(
                   children: [
-                    Text(trade.userName, style: TextStyle(color: Colors.white, fontSize: 16.sp, fontWeight: FontWeight.w900)),
-                    Row(
-                      children: [
-                        Icon(Icons.star, color: const Color(0xFFFF8BFF), size: 12.sp),
-                        SizedBox(width: 4.w),
-                        Text("${trade.userRating} (${trade.tradesCount})", style: TextStyle(color: Colors.white38, fontSize: 11.sp, fontWeight: FontWeight.w800)),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.04),
-                  borderRadius: BorderRadius.circular(10.r),
-                ),
-                child: Text("VERIFIED AVAILABLE", style: TextStyle(color: const Color(0xFF8B9BFF), fontSize: 9.sp, fontWeight: FontWeight.w900)),
-              ),
-            ],
-          ),
-          
-          SizedBox(height: 16.h),
-          
-          // Offered Item & Looking For Section
-          Stack(
-            alignment: Alignment.center,
-            clipBehavior: Clip.none,
-            children: [
-              Column(
-                children: [
-                  Container(
-                    height: 200.h,
-                    width: double.infinity,
-                    clipBehavior: Clip.antiAlias,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(20.r),
-                    ),
-                    child: Stack(
-                      children: [
-                        Positioned.fill(
-                          child: _buildTradeItemImageWidget(
-                            trade.offeredItemImage,
-                            fit: BoxFit.cover,
-                          ),
-                        ),
-                        Positioned(
-                          left: 12.w,
-                          bottom: 12.h,
-                          child: Container(
-                            padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
-                            decoration: BoxDecoration(
-                              color: Colors.black.withOpacity(0.4),
-                              borderRadius: BorderRadius.circular(14.r),
-                              border: Border.all(color: Colors.white10),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text("OFFERED ITEM", style: TextStyle(color: const Color(0xFF8B9BFF), fontSize: 10.sp, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
-                                SizedBox(height: 4.h),
-                                Text(trade.offeredItemName, style: TextStyle(color: Colors.white, fontSize: 15.sp, fontWeight: FontWeight.w900)),
-                                Text(trade.offeredItemValue, style: TextStyle(color: Colors.white38, fontSize: 11.sp, fontWeight: FontWeight.w700)),
-                              ],
+                    Container(
+                      height: 200.h,
+                      width: double.infinity,
+                      clipBehavior: Clip.antiAlias,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(20.r),
+                      ),
+                      child: Stack(
+                        children: [
+                          Positioned.fill(
+                            child: _buildTradeItemImageWidget(
+                              trade.offeredItemImage,
+                              fit: BoxFit.cover,
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                   SizedBox(height: 8.h),
-                  
-                  // Swap Icon sitting in the middle
-                  Transform.translate(
-                    offset: Offset(0, 0),
-                    child: Stack(
-                      alignment: Alignment.center,
-                      clipBehavior: Clip.none,
-                      children: [
-                        SizedBox(height: 8.h), // Tighten the gap
-                        Positioned(
-                          child: Container(
-                            width: 44.w,
-                            height: 44.w,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF8B9BFF), // Added the missing background color
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: const Color(0xFF8B9BFF).withOpacity(0.4),
-                                  blurRadius: 20.r,
-                                  spreadRadius: 2.r,
-                                ),
-                              ],
-                            ),
-                            child: Center(
-                              child: Padding(
-                                padding: EdgeInsets.all(8.r), // Adjust padding to scale SVG
-                                child: SvgPicture.asset(
-                                  "assets/icons/Container1.svg",
-                                  fit: BoxFit.contain,
-                                  colorFilter: const ColorFilter.mode(Colors.black, BlendMode.srcIn), // Ensure arrows are black
-                                ),
+                          Positioned(
+                            left: 12.w,
+                            bottom: 12.h,
+                            child: Container(
+                              padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withOpacity(0.4),
+                                borderRadius: BorderRadius.circular(14.r),
+                                border: Border.all(color: Colors.white10),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text("OFFERED ITEM", style: TextStyle(color: const Color(0xFF8B9BFF), fontSize: 10.sp, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
+                                  SizedBox(height: 4.h),
+                                  Text(trade.offeredItemName, style: TextStyle(color: Colors.white, fontSize: 15.sp, fontWeight: FontWeight.w900)),
+                                  Text(trade.offeredItemValue, style: TextStyle(color: Colors.white38, fontSize: 11.sp, fontWeight: FontWeight.w700)),
+                                ],
                               ),
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  SizedBox(height: 8.h),
-
-
-                  // Looking For
-                  Container(
-                    width: double.infinity,
-                    padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 14.h),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF0F0B1E),
-                      borderRadius: BorderRadius.circular(20.r),
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text("LOOKING FOR", style: TextStyle(color: const Color(0xFFFF8BFF), fontSize: 11.sp, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
-                              SizedBox(height: 8.h),
-                              Text(trade.lookingForItemName, style: TextStyle(color: Colors.white, fontSize: 15.sp, fontWeight: FontWeight.w900)),
-                              SizedBox(height: 2.h),
-                              Text(trade.lookingForItemValue, style: TextStyle(color: Colors.white38, fontSize: 12.sp, fontWeight: FontWeight.w700)),
-                            ],
+                          Positioned(
+                            right: 12.w,
+                            bottom: 12.h,
+                            child: Container(
+                              width: 38.r,
+                              height: 38.r,
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.9),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Center(
+                                child: Icon(Icons.add, color: Colors.black, size: 22.sp),
+                              ),
+                            ),
                           ),
+                        ],
+                      ),
+                    ),
+                    
+                    SizedBox(height: 12.h),
+
+                    // Looking For
+                    Container(
+                      width: double.infinity,
+                      padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 14.h),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF0F0B1E),
+                        borderRadius: BorderRadius.circular(20.r),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text("LOOKING FOR", style: TextStyle(color: const Color(0xFFFF8BFF), fontSize: 11.sp, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
+                                SizedBox(height: 8.h),
+                                Text(trade.lookingForItemName, style: TextStyle(color: Colors.white, fontSize: 15.sp, fontWeight: FontWeight.w900)),
+                                SizedBox(height: 2.h),
+                                Text(trade.lookingForItemValue, style: TextStyle(color: Colors.white38, fontSize: 12.sp, fontWeight: FontWeight.w700)),
+                              ],
+                            ),
+                          ),
+                          Icon(Icons.watch_outlined, color: Colors.white10, size: 28.sp),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+
+                // Center Swap Icon floating cleanly over cards
+                Positioned(
+                  top: 178.h,
+                  child: Container(
+                    width: 48.r,
+                    height: 48.r,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: const Color(0xFF8B9BFF),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF8B9BFF).withOpacity(0.4),
+                          blurRadius: 16.r,
+                          offset: const Offset(0, 4),
                         ),
-                        Icon(Icons.watch_outlined, color: Colors.white10, size: 28.sp),
                       ],
                     ),
+                    child: Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(8.r),
+                        child: SvgPicture.asset(
+                          "assets/icons/Container1.svg",
+                          fit: BoxFit.contain,
+                          colorFilter: const ColorFilter.mode(Colors.black, BlendMode.srcIn),
+                        ),
+                      ),
+                    ),
                   ),
-                ],
-              ),
-            ],
-          ),
-          
-          SizedBox(height: 16.h),
-          
-          // Action Buttons
-          Row(
-            children: [
-              Expanded(
-                child: _buildActionButton(
-                  "View Details",
-                  Colors.white.withOpacity(0.06),
-                  Colors.white,
-                  onTap: () => Get.toNamed(AppRoute.tradeDetails, arguments: trade.rawProduct),
                 ),
-              ),
-              SizedBox(width: 16.w),
-              Expanded(
-                child: _buildActionButton(
-                  "Make Offer",
-                  const Color(0xFF8B9BFF),
-                  Colors.black,
-                  onTap: () => Get.toNamed('/make_offer', arguments: trade.rawProduct),
+              ],
+            ),
+            
+            SizedBox(height: 16.h),
+            
+            // Action Buttons
+            Row(
+              children: [
+                Expanded(
+                  child: _buildActionButton(
+                    "View Details",
+                    Colors.white.withOpacity(0.06),
+                    Colors.white,
+                    onTap: () => Get.toNamed(AppRoute.tradeDetails, arguments: trade.rawProduct),
+                  ),
                 ),
-              ),
-            ],
-          ),
-        ],
+                SizedBox(width: 16.w),
+                Expanded(
+                  child: _buildActionButton(
+                    "Make Offer",
+                    const Color(0xFF8B9BFF),
+                    Colors.black,
+                    onTap: () => Get.toNamed('/make_offer', arguments: trade.rawProduct),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -587,17 +594,6 @@ class BidShwapScreen extends GetView<BidShwapController> {
   //   );
   // }
 
-  Widget _buildTradeItemImage(String url, {bool small = false}) {
-    return Container(
-      width: small ? 64.w : 120.w,
-      height: small ? 64.w : 120.w,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(small ? 14.r : 24.r),
-        image: DecorationImage(image: NetworkImage(url), fit: BoxFit.cover),
-      ),
-    );
-  }
-
   Widget _buildActionButton(String text, Color bg, Color textCol, {VoidCallback? onTap}) {
     return SizedBox(
       height: 48.h,
@@ -652,6 +648,88 @@ class BidShwapScreen extends GetView<BidShwapController> {
       cleanUrl,
       fit: fit,
       errorBuilder: (context, error, stackTrace) => placeholder,
+    );
+  }
+
+  Widget _buildTradeCardShimmer() {
+    return Container(
+      margin: EdgeInsets.only(bottom: 20.h),
+      padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 18.h),
+      decoration: BoxDecoration(
+        color: const Color(0xFF161622),
+        borderRadius: BorderRadius.circular(28.r),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // User row shimmer
+          Row(
+            children: [
+              CustomShimmer.circular(width: 36.r, height: 36.r),
+              SizedBox(width: 12.w),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    CustomShimmer.rectangular(height: 14.h, width: 120.w),
+                    SizedBox(height: 6.h),
+                    CustomShimmer.rectangular(height: 10.h, width: 70.w),
+                  ],
+                ),
+              ),
+              CustomShimmer.rectangular(
+                height: 24.h,
+                width: 110.w,
+                shapeBorder: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10.r),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 16.h),
+
+          // Main image shimmer
+          CustomShimmer.rectangular(
+            height: 200.h,
+            shapeBorder: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20.r),
+            ),
+          ),
+          SizedBox(height: 16.h),
+
+          // Looking for box shimmer
+          CustomShimmer.rectangular(
+            height: 64.h,
+            shapeBorder: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16.r),
+            ),
+          ),
+          SizedBox(height: 16.h),
+
+          // Action buttons shimmer
+          Row(
+            children: [
+              Expanded(
+                child: CustomShimmer.rectangular(
+                  height: 48.h,
+                  shapeBorder: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(24.r),
+                  ),
+                ),
+              ),
+              SizedBox(width: 12.w),
+              Expanded(
+                child: CustomShimmer.rectangular(
+                  height: 48.h,
+                  shapeBorder: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(24.r),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

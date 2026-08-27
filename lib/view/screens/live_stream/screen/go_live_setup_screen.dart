@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import '../../../../data/helpers/shared_prefe.dart';
+import '../../../../data/helpers/product_cache.dart';
 import '../../../../data/services/api_client.dart';
 import '../../../../data/services/api_url.dart';
 import '../../../../global/widgets/custom_background.dart';
+import '../../profile/controller/profile_controller.dart';
 import '../controller/agora_live_controller.dart';
 import 'host_live_screen.dart';
 import 'dart:convert';
@@ -35,23 +37,53 @@ class _GoLiveSetupScreenState extends State<GoLiveSetupScreen> {
   }
 
   Future<void> _loadMyProducts() async {
+    final userId = SharePrefsHelper.getString(SharePrefsHelper.userIdKey) ?? "";
+
+    // 1. Instant Cache from ProfileController (0ms)
+    if (Get.isRegistered<ProfileController>()) {
+      final profileCtrl = Get.find<ProfileController>();
+      if (profileCtrl.userListings.isNotEmpty) {
+        _myProducts = profileCtrl.userListings
+            .map((e) => Map<String, dynamic>.from(e))
+            .toList();
+        _loadingProducts = false;
+        if (_myProducts.isNotEmpty && _selectedProduct == null) {
+          _selectedProduct = _myProducts.first;
+        }
+      }
+    }
+
+    // 2. Instant Static ProductCache (0ms)
+    final cached = ProductCache.getMyProducts(userId);
+    if (cached != null && cached.isNotEmpty && _myProducts.isEmpty) {
+      _myProducts = List<Map<String, dynamic>>.from(cached);
+      _loadingProducts = false;
+      if (_selectedProduct == null) {
+        _selectedProduct = _myProducts.first;
+      }
+    }
+
+    if (mounted) setState(() {});
+
+    // 3. Fast Parallel Network Fetch & Cache in Background
     try {
       final apiClient = Get.find<ApiClient>();
-      final userId = SharePrefsHelper.getString(SharePrefsHelper.userIdKey) ?? "";
-      final res = await apiClient.getData("${ApiUrl.products}?sellerId=$userId");
-      if (res.statusCode == 200) {
-        final body = jsonDecode(res.body);
-        final data = body['data'] ?? body['products'] ?? body['result'] ?? [];
-        if (data is List) {
-          setState(() {
-            _myProducts = data.map((e) => Map<String, dynamic>.from(e)).toList();
-          });
-        }
+      final products = await ProductCache.fetchMyProducts(apiClient, userId);
+      if (products.isNotEmpty && mounted) {
+        setState(() {
+          _myProducts = products;
+          _loadingProducts = false;
+          if (_selectedProduct == null) {
+            _selectedProduct = _myProducts.first;
+          }
+        });
       }
     } catch (e) {
       debugPrint("Load products error: $e");
     } finally {
-      setState(() => _loadingProducts = false);
+      if (mounted) {
+        setState(() => _loadingProducts = false);
+      }
     }
   }
 

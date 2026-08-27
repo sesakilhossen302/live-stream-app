@@ -3,6 +3,8 @@ import 'package:get/get.dart';
 import '../../../../data/services/api_client.dart';
 import '../../../../data/services/api_url.dart';
 import '../../../../data/helpers/shared_prefe.dart';
+import '../../../../data/helpers/user_cache.dart';
+import '../../main/controller/main_controller.dart';
 
 class MessagesController extends GetxController {
   final ApiClient _apiClient = Get.find<ApiClient>();
@@ -13,6 +15,38 @@ class MessagesController extends GetxController {
 
   final chatRooms = <Map<String, dynamic>>[].obs;
   final updateLogs = <Map<String, dynamic>>[].obs;
+  final Set<String> locallyReadChatIds = <String>{};
+
+  void markRoomAsRead(String roomId) {
+    if (roomId.isEmpty) return;
+    locallyReadChatIds.add(roomId);
+
+    final index = chatRooms.indexWhere((r) => r['id'] == roomId);
+    if (index != -1) {
+      final updated = Map<String, dynamic>.from(chatRooms[index]);
+      updated['isSpecial'] = false;
+      updated['isUnread'] = false;
+      updated['unreadCount'] = 0;
+      chatRooms[index] = updated;
+      chatRooms.refresh();
+    }
+
+    _updateGlobalBadge();
+  }
+
+  void _updateGlobalBadge() {
+    int totalUnread = 0;
+    for (var r in chatRooms) {
+      final String id = r['id']?.toString() ?? '';
+      if (locallyReadChatIds.contains(id)) continue;
+      if (r['isSpecial'] == true || r['isUnread'] == true) {
+        totalUnread++;
+      }
+    }
+    if (Get.isRegistered<MainController>()) {
+      Get.find<MainController>().unreadMessageCount.value = totalUnread;
+    }
+  }
 
   @override
   void onInit() {
@@ -73,7 +107,16 @@ class MessagesController extends GetxController {
                 pMap?['avatar'] ?? 
                 pMap?['image'] ??
                 (pMap?['user'] is Map ? pMap!['user']['profile'] : null);
-            final String avatar = rawAvatar != null ? rawAvatar.toString() : "";
+            String avatar = rawAvatar != null ? rawAvatar.toString() : "";
+
+            // Check cache or populate cache
+            if (name.isNotEmpty) {
+              UserCache.set(otherId, name, avatar);
+            } else if (UserCache.get(otherId) != null) {
+              final cached = UserCache.get(otherId)!;
+              name = cached['name'] ?? '';
+              if (avatar.isEmpty) avatar = cached['avatar'] ?? '';
+            }
             
             String imageUrl = "";
             if (avatar.isNotEmpty) {
@@ -89,14 +132,21 @@ class MessagesController extends GetxController {
 
             final isOrder = room['orderId'] != null || room['order'] != null;
             final isTrade = room['tradeId'] != null || room['trade'] != null || room['swap'] != null;
+            final String roomId = (room['_id'] ?? room['id'] ?? '').toString();
+            final bool isLocallyRead = locallyReadChatIds.contains(roomId);
+            final bool isUnread = !isLocallyRead &&
+                ((room['unreadCount'] != null && (room['unreadCount'] as num) > 0) ||
+                    room['isUnread'] == true);
 
             parsedRooms.add({
-              "id": room['_id'],
+              "id": roomId,
               "name": name.replaceAll('@', '').trim(),
               "message": lastMsg,
               "time": _formatTime(time),
               "avatar": imageUrl,
-              "isSpecial": room['unreadCount'] != null && (room['unreadCount'] as num) > 0 || room['isUnread'] == true,
+              "isSpecial": isUnread,
+              "isUnread": isUnread,
+              "unreadCount": isLocallyRead ? 0 : (room['unreadCount'] ?? 0),
               "isOrder": isOrder,
               "isTrade": isTrade,
               "participantId": otherId,
@@ -105,14 +155,35 @@ class MessagesController extends GetxController {
 
           chatRooms.assignAll(parsedRooms);
 
-          // Asynchronously fetch real user profile for rooms missing real names
+          int totalUnread = 0;
+          for (var r in parsedRooms) {
+            final String id = r['id']?.toString() ?? '';
+            if (locallyReadChatIds.contains(id)) continue;
+            if (r['isSpecial'] == true || r['isUnread'] == true) {
+              totalUnread++;
+            }
+          }
+          if (Get.isRegistered<MainController>()) {
+            Get.find<MainController>().unreadMessageCount.value = totalUnread;
+          }
+
+          // Asynchronously fetch missing profiles in parallel
+          final List<Future> fetchTasks = [];
           for (int i = 0; i < parsedRooms.length; i++) {
             final room = parsedRooms[i];
             final pId = room['participantId']?.toString() ?? "";
             final curName = room['name']?.toString() ?? "";
             if (pId.isNotEmpty && (curName.isEmpty || curName.toLowerCase() == 'user')) {
-              _fetchAndSetParticipantInfo(pId, i);
+              fetchTasks.add(() async {
+                final uData = await UserCache.fetchUser(_apiClient, pId);
+                if (uData['name']?.isNotEmpty == true) {
+                  _applyParticipantNameAndAvatar(i, uData['name']!, uData['avatar'] ?? '');
+                }
+              }());
             }
+          }
+          if (fetchTasks.isNotEmpty) {
+            Future.wait(fetchTasks);
           }
         } else {
           // Genuinely empty chat rooms from server database
@@ -126,68 +197,6 @@ class MessagesController extends GetxController {
       _loadMockChatRooms();
     } finally {
       isLoading.value = false;
-    }
-  }
-
-  Future<void> _fetchAndSetParticipantInfo(String pId, int index) async {
-    if (pId.isEmpty) return;
-    try {
-      final currentUserId = SharePrefsHelper.getString(SharePrefsHelper.userIdKey);
-      
-      // 1. Try trade offers endpoint (200 OK with sender/receiver details)
-      final tradeRes = await _apiClient.getData('${ApiUrl.tradeOffers}?userId=$currentUserId&type=sent');
-      if (tradeRes.statusCode == 200) {
-        final List tradeList = jsonDecode(tradeRes.body)['data'] ?? [];
-        for (var offer in tradeList) {
-          if (offer is Map) {
-            final rec = offer['receiverId'];
-            final sen = offer['senderId'];
-            if (rec is Map && (rec['_id'] == pId || rec['id'] == pId)) {
-              final String name = (rec['fullName'] ?? rec['name'] ?? rec['username'] ?? '').toString();
-              if (name.isNotEmpty) {
-                _applyParticipantNameAndAvatar(index, name, (rec['avatar'] ?? rec['profileImage'] ?? rec['image'] ?? rec['profile'] ?? '').toString());
-                return;
-              }
-            }
-            if (sen is Map && (sen['_id'] == pId || sen['id'] == pId)) {
-              final String name = (sen['fullName'] ?? sen['name'] ?? sen['username'] ?? '').toString();
-              if (name.isNotEmpty) {
-                _applyParticipantNameAndAvatar(index, name, (sen['avatar'] ?? sen['profileImage'] ?? sen['image'] ?? sen['profile'] ?? '').toString());
-                return;
-              }
-            }
-          }
-        }
-      }
-
-      // 2. Try products endpoint (200 OK with sellerId details)
-      final prodRes = await _apiClient.getData('${ApiUrl.products}?sellerId=$pId&limit=1');
-      if (prodRes.statusCode == 200) {
-        final List prodList = jsonDecode(prodRes.body)['data'] ?? jsonDecode(prodRes.body)['products'] ?? [];
-        if (prodList.isNotEmpty && prodList.first is Map) {
-          final seller = prodList.first['sellerId'];
-          if (seller is Map) {
-            final String name = (seller['fullName'] ?? seller['name'] ?? seller['username'] ?? '').toString();
-            final String av = (seller['profile'] ?? seller['profileImage'] ?? seller['avatar'] ?? seller['image'] ?? '').toString();
-            if (name.isNotEmpty) {
-              _applyParticipantNameAndAvatar(index, name, av);
-              return;
-            }
-          }
-        }
-      }
-
-      // 3. Fallback to /users/:id
-      final response = await _apiClient.getData('${ApiUrl.users}/$pId');
-      if (response.statusCode == 200) {
-        final body = jsonDecode(response.body);
-        final data = body['data'] ?? body;
-        final String fn = (data['fullName'] ?? data['name'] ?? data['username'] ?? '').toString();
-        final String av = (data['avatar'] ?? data['profileImage'] ?? data['image'] ?? data['profile'] ?? '').toString();
-        _applyParticipantNameAndAvatar(index, fn, av);
-      }
-    } catch (e) {
-      Get.log("❌ [_fetchAndSetParticipantInfo] Error: $e");
     }
   }
 

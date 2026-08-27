@@ -302,7 +302,7 @@ class ApiClient {
     http.Response response,
     Future<http.Response> Function() retryAction,
   ) async {
-    // Check if account is deleted or user no longer exists
+    // Check if session/token is expired or account is invalid
     if (response.statusCode >= 400) {
       try {
         final Map<String, dynamic> body = jsonDecode(response.body);
@@ -316,20 +316,26 @@ class ApiClient {
             lowerMsg.contains("account is deactivated") ||
             lowerMsg.contains("jwt malformed") ||
             lowerMsg.contains("invalid token") ||
-            lowerMsg.contains("invalid signature")) {
-          await _logoutUser(message: rawMsg.isNotEmpty ? rawMsg : "Your account is no longer active. Please sign up or log in again.");
+            lowerMsg.contains("invalid signature") ||
+            lowerMsg.contains("jwt expired") ||
+            lowerMsg.contains("token expired") ||
+            lowerMsg.contains("session expired") ||
+            lowerMsg.contains("unauthorized") ||
+            lowerMsg.contains("not logged in") ||
+            lowerMsg.contains("token is not valid")) {
+          await _logoutUser(message: rawMsg.isNotEmpty ? rawMsg : "Your session has expired. Please log in again.");
           return response;
         }
       } catch (_) {}
     }
 
-    if (response.statusCode == 401 && uri != "/auth/refresh-token") {
+    if ((response.statusCode == 401 || (response.statusCode == 403 && (uri.contains("/users/profile") || uri == ApiUrl.profile))) && uri != "/auth/refresh-token") {
       final success = await _refreshToken();
       if (success) {
         // Token refresh succeeded, retry request with new token
         return await retryAction();
       } else {
-        // Refresh failed, log out user and redirect to Login
+        // Refresh failed, log out user and redirect directly to Login
         await _logoutUser(message: "Your session has expired. Please log in again.");
       }
     } else if (response.statusCode == 403) {

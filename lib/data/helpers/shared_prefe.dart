@@ -5,6 +5,8 @@ class SharePrefsHelper {
   static const String refreshTokenKey = "refreshToken";
   static const String isLoginKey = "isLogin";
   static const String userIdKey = "userId";
+  static const String userEmailKey = "userEmail";
+  static const String fcmTokenKey = "fcmDeviceToken";
 
   static SharedPreferences? _prefs;
 

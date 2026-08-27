@@ -63,13 +63,17 @@ class HomeScreen extends StatelessWidget {
                   ),
                   SizedBox(width: 12.w),
                   GestureDetector(
-                    onTap: () => Get.toNamed(AppRoute.notifications),
+                    onTap: () async {
+                      await Get.toNamed(AppRoute.notifications);
+                      controller.fetchUnreadNotificationCount();
+                    },
                     child: Stack(
+                      clipBehavior: Clip.none,
                       children: [
                         Container(
                           padding: EdgeInsets.all(10.r),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.06),
+                            color: Colors.white.withValues(alpha: 0.06),
                             shape: BoxShape.circle,
                           ),
                           child: Icon(
@@ -78,18 +82,42 @@ class HomeScreen extends StatelessWidget {
                             size: 24.sp,
                           ),
                         ),
-                        Positioned(
-                          top: 8.r,
-                          right: 8.r,
-                          child: Container(
-                            width: 8.r,
-                            height: 8.r,
-                            decoration: const BoxDecoration(
-                              color: Color(0xFF8B9BFF),
-                              shape: BoxShape.circle,
+                        Obx(() {
+                          final count = controller.unreadNotificationCount.value;
+                          if (count <= 0) return const SizedBox.shrink();
+                          return Positioned(
+                            top: -2.r,
+                            right: -2.r,
+                            child: Container(
+                              padding: EdgeInsets.symmetric(horizontal: 5.w, vertical: 2.h),
+                              constraints: BoxConstraints(minWidth: 17.r, minHeight: 17.r),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF8B9BFF),
+                                borderRadius: BorderRadius.circular(10.r),
+                                border: Border.all(color: const Color(0xFF0D0819), width: 1.5),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: const Color(0xFF8B9BFF).withValues(alpha: 0.45),
+                                    blurRadius: 6,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: Center(
+                                child: Text(
+                                  count > 99 ? "99+" : "$count",
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 9.sp,
+                                    fontWeight: FontWeight.w900,
+                                    height: 1.1,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
                             ),
-                          ),
-                        ),
+                          );
+                        }),
                       ],
                     ),
                   ),
@@ -525,7 +553,7 @@ class HomeScreen extends StatelessWidget {
                 ],
               ),
 
-              SizedBox(height: 100.h), // Bottom padding for navigation bar
+              SizedBox(height: 190.h), // Bottom padding for navigation bar & floating plus button
             ],
           ),
         ),

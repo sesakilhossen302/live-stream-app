@@ -3,7 +3,9 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import '../../../../core/app_route.dart';
 import '../../../../data/helpers/shared_prefe.dart';
+import '../../../../data/services/push_notification_service.dart';
 import '../../../../global/widgets/custom_background.dart';
+import '../controller/profile_controller.dart';
 import '../controller/profile_information_controller.dart';
 
 class AccountSettingsScreen extends StatelessWidget {
@@ -385,9 +387,16 @@ class AccountSettingsScreen extends StatelessWidget {
                   Expanded(
                     child: ElevatedButton(
                       onPressed: () async {
-                        await SharePrefsHelper.clear();
                         Get.back();
-                        Get.offAllNamed(AppRoute.login);
+                        if (Get.isRegistered<ProfileController>()) {
+                          Get.find<ProfileController>().logout();
+                        } else {
+                          try {
+                            await PushNotificationService.instance.clearDeviceToken();
+                          } catch (_) {}
+                          await SharePrefsHelper.clear();
+                          Get.offAllNamed(AppRoute.login);
+                        }
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF8B9BFF),

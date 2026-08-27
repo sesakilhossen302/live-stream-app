@@ -5,6 +5,7 @@ import '../../../../core/app_route.dart';
 import '../../../../data/helpers/shared_prefe.dart';
 import '../../../../data/services/api_client.dart';
 import '../../../../data/services/api_url.dart';
+import '../../../../data/services/push_notification_service.dart';
 
 class OtpController extends GetxController {
   final pinController = TextEditingController();
@@ -73,7 +74,8 @@ class OtpController extends GetxController {
     try {
       final response = await _apiClient.postData(ApiUrl.verifyAccount, {
         "email": email,
-        "oneTimeCode": otp,
+        "oneTimeCode": otp.trim().toString(),
+        "authType": fromForgotPassword ? "resetPassword" : "createAccount",
       });
 
       if (response.statusCode == 200 || response.statusCode == 201) {
@@ -98,6 +100,8 @@ class OtpController extends GetxController {
             accessToken,
           );
           await SharePrefsHelper.setBool(SharePrefsHelper.isLoginKey, true);
+          // Sync device token
+          PushNotificationService.instance.syncDeviceToken();
         } else {
           print("--- NO TOKEN FOUND IN RESPONSE ---");
         }
@@ -110,7 +114,10 @@ class OtpController extends GetxController {
         );
 
         if (fromForgotPassword) {
-          Get.toNamed(AppRoute.resetPassword);
+          Get.toNamed(AppRoute.resetPassword, arguments: {
+            'token': accessToken ?? '',
+            'email': email,
+          });
         } else {
           Get.offAllNamed(AppRoute.category);
         }
@@ -148,8 +155,10 @@ class OtpController extends GetxController {
     if (timerSeconds.value == 0) {
       isLoading.value = true;
       try {
+        final String authType = fromForgotPassword ? "resetPassword" : "createAccount";
         final response = await _apiClient.postData(ApiUrl.resendOtp, {
           "email": email,
+          "authType": authType,
         });
 
         if (response.statusCode == 200 || response.statusCode == 201) {

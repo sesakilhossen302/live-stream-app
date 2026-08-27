@@ -7,6 +7,8 @@ import '../../../../data/helpers/shared_prefe.dart';
 import '../../../../data/services/api_client.dart';
 import '../../../../data/services/api_url.dart';
 
+import '../../../../data/services/push_notification_service.dart';
+
 class LoginController extends GetxController {
   late TextEditingController emailController;
   late TextEditingController passwordController;
@@ -53,20 +55,32 @@ class LoginController extends GetxController {
     isLoading.value = true;
 
     try {
+      // Fetch FCM Device Token for Backend Sync (Option A)
+      final String? deviceToken = await PushNotificationService.instance.getDeviceToken();
+
+      final Map<String, dynamic> loginPayload = {
+        "email": email,
+        "password": password,
+      };
+
+      if (deviceToken != null && deviceToken.isNotEmpty) {
+        loginPayload["deviceToken"] = deviceToken;
+      }
+
       final response = await _apiClient.postData(
         ApiUrl.login,
-        {
-          "email": email,
-          "password": password,
-        },
+        loginPayload,
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final responseData = jsonDecode(response.body);
         if (responseData['data'] != null) {
-          final dataMap = responseData['data'];
-          final accessToken = dataMap['accessToken'] ?? '';
-          final refreshToken = dataMap['refreshToken'] ?? '';
+          final dataMap = responseData['data'] is Map ? responseData['data'] : responseData;
+          final userMap = dataMap['user'] is Map ? dataMap['user'] : (responseData['user'] is Map ? responseData['user'] : {});
+          final accessToken = (dataMap['accessToken'] ?? dataMap['token'] ?? '').toString();
+          final refreshToken = (dataMap['refreshToken'] ?? '').toString();
+          final userId = (dataMap['id'] ?? dataMap['_id'] ?? userMap['id'] ?? userMap['_id'] ?? '').toString();
+          final userEmail = (dataMap['email'] ?? userMap['email'] ?? email).toString();
 
           if (accessToken.isNotEmpty) {
             await SharePrefsHelper.setString(SharePrefsHelper.accessTokenKey, accessToken);
@@ -74,7 +88,16 @@ class LoginController extends GetxController {
           if (refreshToken.isNotEmpty) {
             await SharePrefsHelper.setString(SharePrefsHelper.refreshTokenKey, refreshToken);
           }
+          if (userId.isNotEmpty) {
+            await SharePrefsHelper.setString(SharePrefsHelper.userIdKey, userId);
+          }
+          if (userEmail.isNotEmpty) {
+            await SharePrefsHelper.setString(SharePrefsHelper.userEmailKey, userEmail);
+          }
           await SharePrefsHelper.setBool(SharePrefsHelper.isLoginKey, true);
+
+          // Guarantee FCM token is synced to profile
+          PushNotificationService.instance.syncDeviceToken();
         }
 
         Get.snackbar(

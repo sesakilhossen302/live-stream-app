@@ -7,7 +7,10 @@ import 'package:flutter_stripe/flutter_stripe.dart';
 import '../../../../data/services/api_client.dart';
 import '../../../../data/services/api_url.dart';
 import '../../../../data/helpers/shared_prefe.dart';
+import '../../../../data/helpers/user_cache.dart';
 import '../../../../data/services/socket_service.dart';
+import '../../main/controller/main_controller.dart';
+import 'messages_controller.dart';
 
 class MessageDetailsController extends GetxController {
   final ApiClient _apiClient = Get.find<ApiClient>();
@@ -43,6 +46,9 @@ class MessageDetailsController extends GetxController {
     final args = Get.arguments as Map<String, dynamic>? ?? {};
     chatId.value = args['chatId'] ?? '';
     
+    partnerId.value = (args['participantId'] ?? args['partnerId'] ?? args['userId'] ?? args['sellerId'] ?? args['receiverId'] ?? '').toString();
+    partnerAvatar.value = args['avatar'] ?? '';
+
     final String initialName = (args['name'] ?? args['fullName'] ?? '').toString();
     if (initialName.isNotEmpty && initialName.toLowerCase() != 'user') {
       partnerName.value = initialName.replaceAll('@', '').trim();
@@ -50,8 +56,16 @@ class MessageDetailsController extends GetxController {
       partnerName.value = '';
     }
 
-    partnerAvatar.value = args['avatar'] ?? '';
-    partnerId.value = (args['participantId'] ?? args['partnerId'] ?? args['userId'] ?? args['sellerId'] ?? args['receiverId'] ?? '').toString();
+    // Check instant in-memory UserCache
+    if (partnerId.value.isNotEmpty) {
+      final cached = UserCache.get(partnerId.value);
+      if (cached != null) {
+        if (cached['name']?.isNotEmpty == true) partnerName.value = cached['name']!;
+        if (cached['avatar']?.isNotEmpty == true && partnerAvatar.value.isEmpty) {
+          partnerAvatar.value = cached['avatar']!;
+        }
+      }
+    }
 
     // Populate order info if passed from a purchase flow
     final order = args['order'];
@@ -65,6 +79,7 @@ class MessageDetailsController extends GetxController {
     }
 
     if (chatId.value.isNotEmpty) {
+      markAsSeen();
       fetchAssociatedTrades();
       fetchMessages(); // initial full load
       _setupSocketListener();
@@ -74,6 +89,38 @@ class MessageDetailsController extends GetxController {
     } else {
       _loadMockMessages();
     }
+  }
+
+  void markAsSeen() {
+    if (chatId.value.isEmpty || chatId.value.startsWith('mock_')) return;
+
+    // 1. Mark in MessagesController
+    if (Get.isRegistered<MessagesController>()) {
+      Get.find<MessagesController>().markRoomAsRead(chatId.value);
+    }
+
+    // 2. Mark in MainController
+    if (Get.isRegistered<MainController>()) {
+      Get.find<MainController>().markChatAsRead(chatId.value);
+    }
+
+    // 3. Emit socket events to backend
+    try {
+      if (Get.isRegistered<SocketService>()) {
+        final socket = Get.find<SocketService>();
+        final currentUserId = SharePrefsHelper.getString(SharePrefsHelper.userIdKey);
+        socket.emitEvent('mark-as-read', {'chatId': chatId.value, 'userId': currentUserId});
+        socket.emitEvent('read-message', {'chatId': chatId.value, 'userId': currentUserId});
+        socket.emitEvent('seen', {'chatId': chatId.value, 'userId': currentUserId});
+      }
+    } catch (_) {}
+
+    // 4. Send API call to backend to mark read in DB
+    try {
+      _apiClient.patchData('${ApiUrl.chat}/${chatId.value}/read', {});
+      _apiClient.patchData('${ApiUrl.message}/read/${chatId.value}', {});
+      _apiClient.postData('${ApiUrl.chat}/read', {'chatId': chatId.value});
+    } catch (_) {}
   }
 
   Future<void> _resolveExistingChatRoom(String targetPartnerId) async {
@@ -101,6 +148,7 @@ class MessageDetailsController extends GetxController {
             if (matches && cId.isNotEmpty) {
               chatId.value = cId;
               Get.log("💬 [MessageCtrl] Joined existing chat room: $cId for partner: $targetPartnerId");
+              markAsSeen();
               fetchAssociatedTrades();
               fetchMessages();
               _setupSocketListener();
@@ -123,6 +171,7 @@ class MessageDetailsController extends GetxController {
           if (newChatId.isNotEmpty) {
             chatId.value = newChatId;
             Get.log("💬 [MessageCtrl] Resolved new chat room: $newChatId");
+            markAsSeen();
             fetchAssociatedTrades();
             fetchMessages();
             _setupSocketListener();
@@ -141,66 +190,20 @@ class MessageDetailsController extends GetxController {
   Future<void> fetchPartnerDetails(String userId) async {
     if (userId.isEmpty) return;
     try {
-      final currentUserId = SharePrefsHelper.getString(SharePrefsHelper.userIdKey);
-      
-      // 1. Try trade offers endpoint (200 OK with sender/receiver details)
-      final tradeRes = await _apiClient.getData('${ApiUrl.tradeOffers}?userId=$currentUserId&type=sent');
-      if (tradeRes.statusCode == 200) {
-        final List tradeList = jsonDecode(tradeRes.body)['data'] ?? [];
-        for (var offer in tradeList) {
-          if (offer is Map) {
-            final rec = offer['receiverId'];
-            final sen = offer['senderId'];
-            if (rec is Map && (rec['_id'] == userId || rec['id'] == userId)) {
-              final String fn = (rec['fullName'] ?? rec['name'] ?? rec['username'] ?? '').toString();
-              if (fn.isNotEmpty) {
-                partnerName.value = fn.replaceAll('@', '').trim();
-                partnerAvatar.value = (rec['avatar'] ?? rec['profileImage'] ?? rec['image'] ?? rec['profile'] ?? '').toString();
-                return;
-              }
-            }
-            if (sen is Map && (sen['_id'] == userId || sen['id'] == userId)) {
-              final String fn = (sen['fullName'] ?? sen['name'] ?? sen['username'] ?? '').toString();
-              if (fn.isNotEmpty) {
-                partnerName.value = fn.replaceAll('@', '').trim();
-                partnerAvatar.value = (sen['avatar'] ?? sen['profileImage'] ?? sen['image'] ?? sen['profile'] ?? '').toString();
-                return;
-              }
-            }
-          }
+      final cached = UserCache.get(userId);
+      if (cached != null && cached['name']?.isNotEmpty == true) {
+        partnerName.value = cached['name']!;
+        if (cached['avatar']?.isNotEmpty == true) {
+          partnerAvatar.value = cached['avatar']!;
         }
+        return;
       }
 
-      // 2. Try products endpoint (200 OK with sellerId details)
-      final prodRes = await _apiClient.getData('${ApiUrl.products}?sellerId=$userId&limit=1');
-      if (prodRes.statusCode == 200) {
-        final List prodList = jsonDecode(prodRes.body)['data'] ?? jsonDecode(prodRes.body)['products'] ?? [];
-        if (prodList.isNotEmpty && prodList.first is Map) {
-          final seller = prodList.first['sellerId'];
-          if (seller is Map) {
-            final String fn = (seller['fullName'] ?? seller['name'] ?? seller['username'] ?? '').toString();
-            final String av = (seller['profile'] ?? seller['profileImage'] ?? seller['avatar'] ?? seller['image'] ?? '').toString();
-            if (fn.isNotEmpty) {
-              partnerName.value = fn.replaceAll('@', '').trim();
-              if (av.isNotEmpty) partnerAvatar.value = av;
-              return;
-            }
-          }
-        }
-      }
-
-      // 3. Fallback to /users/:id
-      final response = await _apiClient.getData('${ApiUrl.users}/$userId');
-      if (response.statusCode == 200) {
-        final body = jsonDecode(response.body);
-        final data = body['data'] ?? body;
-        final String fn = (data['fullName'] ?? data['name'] ?? data['username'] ?? '').toString();
-        if (fn.isNotEmpty) {
-          partnerName.value = fn.replaceAll('@', '').trim();
-        }
-        final String av = (data['avatar'] ?? data['profileImage'] ?? data['image'] ?? data['profile'] ?? '').toString();
-        if (av.isNotEmpty) {
-          partnerAvatar.value = av;
+      final uData = await UserCache.fetchUser(_apiClient, userId);
+      if (uData['name']?.isNotEmpty == true) {
+        partnerName.value = uData['name']!;
+        if (uData['avatar']?.isNotEmpty == true) {
+          partnerAvatar.value = uData['avatar']!;
         }
       }
     } catch (_) {}
@@ -284,6 +287,7 @@ class MessageDetailsController extends GetxController {
         'isRead': msgMap['isRead'] == true,
         'raw': msgMap,
       });
+      markAsSeen();
       _scrollToBottom();
     } catch (e) {
       Get.log('❌ [Socket] Parse error: $e');
@@ -362,7 +366,10 @@ class MessageDetailsController extends GetxController {
         });
       }
 
-      if (hasNew) _scrollToBottom();
+      if (hasNew) {
+        markAsSeen();
+        _scrollToBottom();
+      }
     } catch (e) {
       // Silently ignore polling errors
     }
@@ -424,6 +431,7 @@ class MessageDetailsController extends GetxController {
 
         // Oldest first → newest at BOTTOM
         messages.assignAll(parsedList);
+        markAsSeen();
       } else {
         messages.clear();
       }
@@ -516,8 +524,8 @@ class MessageDetailsController extends GetxController {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (scrollController.hasClients) {
         scrollController.animateTo(
-          scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 300),
+          0.0,
+          duration: const Duration(milliseconds: 250),
           curve: Curves.easeOut,
         );
       }

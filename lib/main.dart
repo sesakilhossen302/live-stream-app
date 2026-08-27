@@ -7,6 +7,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'core/app_route.dart';
 import 'core/dependency.dart';
 import 'data/helpers/shared_prefe.dart';
+import 'data/services/push_notification_service.dart';
 import 'global/widgets/floating_live_stream_overlay.dart';
 import 'view/screens/live_stream/controller/agora_live_controller.dart';
 
@@ -35,7 +36,6 @@ void main() async {
     debugPrint("Stripe init error: $e");
   }
 
-
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
@@ -47,6 +47,13 @@ void main() async {
   );
   await SharePrefsHelper.init();
   DependencyInjection.init();
+
+  // Initialize Push Notification Service (FCM & Local Notifications)
+  try {
+    await PushNotificationService.instance.init();
+  } catch (e) {
+    debugPrint("⚠️ PushNotificationService init error: $e");
+  }
 
   final String accessToken = SharePrefsHelper.getString(SharePrefsHelper.accessTokenKey);
   final bool hasSeenOnboarding = SharePrefsHelper.getBool("hasSeenOnboarding");

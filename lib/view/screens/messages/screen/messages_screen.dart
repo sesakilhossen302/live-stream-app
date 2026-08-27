@@ -385,12 +385,15 @@ class MessagesScreen extends GetView<MessagesController> {
     bool isSpecial = false,
   }) {
     return InkWell(
-      onTap: () => Get.toNamed(AppRoute.messageDetails, arguments: {
-        "chatId": id,
-        "name": name,
-        "avatar": avatar,
-        "participantId": participantId,
-      }),
+      onTap: () {
+        controller.markRoomAsRead(id);
+        Get.toNamed(AppRoute.messageDetails, arguments: {
+          "chatId": id,
+          "name": name,
+          "avatar": avatar,
+          "participantId": participantId,
+        });
+      },
       borderRadius: BorderRadius.circular(16.r),
       child: Padding(
         padding: EdgeInsets.only(bottom: 24.h),

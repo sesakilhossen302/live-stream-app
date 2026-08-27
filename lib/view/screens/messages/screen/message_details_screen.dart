@@ -97,14 +97,16 @@ class MessageDetailsScreen extends GetView<MessageDetailsController> {
                     );
                   }
 
-                  // Message list — oldest at top, newest at BOTTOM
+                  // Message list — starts from BOTTOM and stacks upward (Messenger style)
                   return ListView.builder(
                     controller: controller.scrollController,
-                    padding: EdgeInsets.fromLTRB(16.w, 12.h, 16.w, 16.h),
+                    reverse: true,
+                    padding: EdgeInsets.fromLTRB(16.w, 16.h, 16.w, 12.h),
                     physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
                     itemCount: controller.messages.length,
                     itemBuilder: (context, index) {
-                      final msg = controller.messages[index];
+                      final reversedIndex = controller.messages.length - 1 - index;
+                      final msg = controller.messages[reversedIndex];
 
                       // Date separator
                       if (msg['isDate'] == true) {

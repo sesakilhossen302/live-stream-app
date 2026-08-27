@@ -9,7 +9,9 @@ import 'dart:convert';
 import '../../../../core/app_route.dart';
 import '../../../../data/services/api_url.dart';
 import '../../../../data/helpers/shared_prefe.dart';
+import '../../../../data/helpers/product_cache.dart';
 import '../../../../data/services/api_client.dart';
+import '../../profile/controller/profile_controller.dart';
 
 class HostLiveScreen extends StatefulWidget {
   const HostLiveScreen({super.key});
@@ -85,116 +87,157 @@ class _HostLiveScreenState extends State<HostLiveScreen> {
               );
             }),
 
-            // ── Top Bar
+            // ── Top Bar (Spacious 2-tier layout)
             Positioned(
               top: 0,
               left: 0,
               right: 0,
               child: SafeArea(
                 child: Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 12.h),
-                  child: Row(
+                  padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      // LIVE badge
-                      Container(
-                        padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 6.h),
-                        decoration: BoxDecoration(
-                          color: Colors.red,
-                          borderRadius: BorderRadius.circular(20.r),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Container(width: 7.r, height: 7.r, decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle)),
-                            SizedBox(width: 6.w),
-                            Text("LIVE", style: TextStyle(color: Colors.white, fontSize: 11.sp, fontWeight: FontWeight.w900, letterSpacing: 1.5)),
-                          ],
-                        ),
-                      ),
-                      SizedBox(width: 8.w),
-                      // TIMER badge
-                      Obx(() {
-                        if (!ctrl.auctionActive.value) return const SizedBox.shrink();
-                        final isLowTime = ctrl.bidTimer.value <= 10;
-                        return Container(
-                          padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
-                          decoration: BoxDecoration(
-                            color: isLowTime ? Colors.redAccent.withOpacity(0.8) : const Color(0xFF8B9BFF).withOpacity(0.12),
-                            borderRadius: BorderRadius.circular(20.r),
-                            border: Border.all(
-                              color: isLowTime ? Colors.redAccent : const Color(0xFF8B9BFF).withOpacity(0.4),
-                              width: 1,
+                      // Row 1: Badges on left + Action buttons on right
+                      Row(
+                        children: [
+                          // LIVE badge
+                          Container(
+                            padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFE50914),
+                              borderRadius: BorderRadius.circular(16.r),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFFE50914).withValues(alpha: 0.4),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: 6.r,
+                                  height: 6.r,
+                                  decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                                ),
+                                SizedBox(width: 5.w),
+                                Text("LIVE", style: TextStyle(color: Colors.white, fontSize: 10.sp, fontWeight: FontWeight.w900, letterSpacing: 1.2)),
+                              ],
                             ),
                           ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.timer_outlined, color: Colors.white, size: 12.sp),
-                              SizedBox(width: 4.w),
-                              Text(
-                                "00:${ctrl.bidTimer.value.toString().padLeft(2, '0')}",
-                                style: TextStyle(color: Colors.white, fontSize: 11.sp, fontWeight: FontWeight.w900),
+                          SizedBox(width: 6.w),
+                          // TIMER badge (when auction is active)
+                          Obx(() {
+                            if (!ctrl.auctionActive.value) return const SizedBox.shrink();
+                            final isLowTime = ctrl.bidTimer.value <= 10;
+                            return Container(
+                              padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 5.h),
+                              decoration: BoxDecoration(
+                                color: isLowTime ? const Color(0xFFE50914).withValues(alpha: 0.85) : const Color(0xFF8B9BFF).withValues(alpha: 0.25),
+                                borderRadius: BorderRadius.circular(16.r),
+                                border: Border.all(
+                                  color: isLowTime ? const Color(0xFFE50914) : const Color(0xFF8B9BFF).withValues(alpha: 0.5),
+                                ),
                               ),
-                            ],
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.timer_outlined, color: Colors.white, size: 11.sp),
+                                  SizedBox(width: 3.w),
+                                  Text(
+                                    "00:${ctrl.bidTimer.value.toString().padLeft(2, '0')}",
+                                    style: TextStyle(color: Colors.white, fontSize: 10.sp, fontWeight: FontWeight.w900),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }),
+                          if (ctrl.auctionActive.value) SizedBox(width: 6.w),
+                          // LIKE counter badge
+                          Obx(() => Container(
+                            padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 5.h),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFF528E).withValues(alpha: 0.25),
+                              borderRadius: BorderRadius.circular(16.r),
+                              border: Border.all(color: const Color(0xFFFF528E).withValues(alpha: 0.4)),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.favorite_rounded, color: const Color(0xFFFF528E), size: 11.sp),
+                                SizedBox(width: 3.w),
+                                Text(
+                                  "${ctrl.likeCount.value}",
+                                  style: TextStyle(color: Colors.white, fontSize: 10.sp, fontWeight: FontWeight.w800),
+                                ),
+                              ],
+                            ),
+                          )),
+                          const Spacer(),
+                          // Minimize button
+                          GestureDetector(
+                            onTap: () => ctrl.minimizeStream(),
+                            child: Container(
+                              padding: EdgeInsets.all(7.r),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withValues(alpha: 0.45),
+                                shape: BoxShape.circle,
+                                border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+                              ),
+                              child: Icon(Icons.fullscreen_exit, color: Colors.white, size: 16.sp),
+                            ),
+                          ),
+                          SizedBox(width: 8.w),
+                          // End button
+                          GestureDetector(
+                            onTap: () => _showEndStreamDialog(ctrl),
+                            child: Container(
+                              padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 6.h),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFE50914).withValues(alpha: 0.9),
+                                borderRadius: BorderRadius.circular(16.r),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: const Color(0xFFE50914).withValues(alpha: 0.3),
+                                    blurRadius: 6,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: Text("End", style: TextStyle(color: Colors.white, fontSize: 12.sp, fontWeight: FontWeight.w900)),
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 6.h),
+                      // Row 2: Stream Title Pill
+                      Obx(() {
+                        final title = ctrl.streamTitle.value.trim();
+                        if (title.isEmpty) return const SizedBox.shrink();
+                        return Container(
+                          constraints: BoxConstraints(maxWidth: 0.7.sw),
+                          padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.4),
+                            borderRadius: BorderRadius.circular(12.r),
+                            border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                          ),
+                          child: Text(
+                            title,
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.9),
+                              fontSize: 11.sp,
+                              fontWeight: FontWeight.w700,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         );
                       }),
-                      SizedBox(width: 8.w),
-                      // LIKE counter badge
-                      Obx(() => Container(
-                        padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFF528E).withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(20.r),
-                          border: Border.all(color: const Color(0xFFFF528E).withOpacity(0.4), width: 1),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.favorite_rounded, color: const Color(0xFFFF528E), size: 12.sp),
-                            SizedBox(width: 4.w),
-                            Text(
-                              "${ctrl.likeCount.value}",
-                              style: TextStyle(color: Colors.white, fontSize: 11.sp, fontWeight: FontWeight.w900),
-                            ),
-                          ],
-                        ),
-                      )),
-                      SizedBox(width: 10.w),
-                      Expanded(
-                        child: Obx(() => Text(
-                          ctrl.streamTitle.value,
-                          style: TextStyle(color: Colors.white, fontSize: 14.sp, fontWeight: FontWeight.w800),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        )),
-                      ),
-                      const Spacer(),
-                      // Minimize button
-                      GestureDetector(
-                        onTap: () => ctrl.minimizeStream(),
-                        child: Container(
-                          padding: EdgeInsets.all(7.r),
-                          decoration: const BoxDecoration(
-                            color: Colors.white24,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(Icons.fullscreen_exit, color: Colors.white, size: 16.sp),
-                        ),
-                      ),
-                      SizedBox(width: 8.w),
-                      // End button
-                      GestureDetector(
-                        onTap: () => _showEndStreamDialog(ctrl),
-                        child: Container(
-                          padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 8.h),
-                          decoration: BoxDecoration(
-                            color: Colors.red.withValues(alpha: 0.85),
-                            borderRadius: BorderRadius.circular(20.r),
-                          ),
-                          child: Text("End", style: TextStyle(color: Colors.white, fontSize: 13.sp, fontWeight: FontWeight.w900)),
-                        ),
-                      ),
                     ],
                   ),
                 ),
@@ -597,20 +640,37 @@ class _HostLiveScreenState extends State<HostLiveScreen> {
     final productsList = <Map<String, dynamic>>[].obs;
     final loadingProducts = true.obs;
     
-    // Fetch products
     final sellerId = SharePrefsHelper.getString(SharePrefsHelper.userIdKey);
-    Get.find<ApiClient>().getData("${ApiUrl.products}?sellerId=$sellerId").then((res) {
-      loadingProducts.value = false;
-      if (res.statusCode == 200) {
-        final body = jsonDecode(res.body);
-        final list = body['data'] ?? [];
-        if (list is List) {
-          productsList.assignAll(list.map((e) => Map<String, dynamic>.from(e)).toList());
-        }
+
+    // 1. Instant Cache from ProfileController (0ms)
+    if (Get.isRegistered<ProfileController>()) {
+      final profileCtrl = Get.find<ProfileController>();
+      if (profileCtrl.userListings.isNotEmpty) {
+        productsList.assignAll(profileCtrl.userListings.map((e) => Map<String, dynamic>.from(e)).toList());
+        loadingProducts.value = false;
       }
-    }).catchError((_) {
+    }
+
+    // 2. Instant Static ProductCache (0ms)
+    final cached = ProductCache.getMyProducts(sellerId);
+    if (cached != null && cached.isNotEmpty && productsList.isEmpty) {
+      productsList.assignAll(cached);
       loadingProducts.value = false;
-    });
+    }
+
+    // 3. Network Fetch
+    if (Get.isRegistered<ApiClient>()) {
+      ProductCache.fetchMyProducts(Get.find<ApiClient>(), sellerId).then((products) {
+        if (products.isNotEmpty) {
+          productsList.assignAll(products);
+        }
+        loadingProducts.value = false;
+      }).catchError((_) {
+        loadingProducts.value = false;
+      });
+    } else {
+      loadingProducts.value = false;
+    }
 
     final startingBidCtrl = TextEditingController(text: "100");
     final incrementCtrl = TextEditingController(text: "5");

@@ -45,20 +45,30 @@ class ResetPasswordController extends GetxController {
 
     isLoading.value = true;
 
-    // Ensure headers are refreshed with the token saved during OTP
-    final token = SharePrefsHelper.getString(SharePrefsHelper.accessTokenKey);
-    print("--- ATTEMPTING RESET WITH TOKEN: $token ---");
+    // Extract token from route arguments or persistent store
+    final args = Get.arguments as Map<String, dynamic>? ?? {};
+    final String passedToken = (args['token'] ?? '').toString();
+    final savedToken = SharePrefsHelper.getString(SharePrefsHelper.accessTokenKey);
+    String rawToken = (passedToken.isNotEmpty ? passedToken : savedToken).trim();
+    if (rawToken.startsWith('Bearer ')) {
+      rawToken = rawToken.substring(7).trim();
+    }
+    print("--- ATTEMPTING RESET WITH RAW TOKEN: $rawToken ---");
 
     try {
       final response = await _apiClient.postData(
         ApiUrl.resetPassword,
-        {"newPassword": password, "confirmPassword": confirmPassword},
+        {
+          "password": password,
+        },
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
-          'Authorization': 'Bearer $token',
-          'token': token,
-          'forget-password-token': token,
+          if (rawToken.isNotEmpty) 'Authorization': 'Bearer $rawToken',
+          if (rawToken.isNotEmpty) 'authorization': rawToken,
+          if (rawToken.isNotEmpty) 'token': rawToken,
+          if (rawToken.isNotEmpty) 'tempToken': rawToken,
+          if (rawToken.isNotEmpty) 'forget-password-token': rawToken,
         },
       );
 
@@ -87,6 +97,7 @@ class ResetPasswordController extends GetxController {
           errorMessage,
           backgroundColor: Colors.red.withOpacity(0.8),
           colorText: Colors.white,
+          duration: const Duration(seconds: 4),
         );
       }
     } catch (e) {

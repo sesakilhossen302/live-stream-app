@@ -6,6 +6,8 @@ import '../../../../core/app_route.dart';
 import '../../../../data/helpers/shared_prefe.dart';
 import '../../../../data/services/api_client.dart';
 import '../../../../data/services/api_url.dart';
+import '../../../../data/services/push_notification_service.dart';
+import '../../../../data/services/socket_service.dart';
 
 class ProfileController extends GetxController {
   final ApiClient _apiClient = Get.find<ApiClient>();
@@ -142,6 +144,23 @@ class ProfileController extends GetxController {
           await fetchActivityData(rawUserId);
         }
       } else {
+        if (response.statusCode == 401 || response.statusCode == 403) {
+          try {
+            if (Get.isRegistered<SocketService>()) {
+              Get.find<SocketService>().disconnectSocket();
+            }
+          } catch (_) {}
+          await SharePrefsHelper.clear();
+          Get.offAllNamed(AppRoute.login);
+          Get.snackbar(
+            "Session Expired",
+            "Your session has expired. Please log in again.",
+            snackPosition: SnackPosition.BOTTOM,
+            backgroundColor: const Color(0xFFFF6B35),
+            colorText: Colors.white,
+          );
+          return;
+        }
         hasError.value = true;
         errorMessage.value = "Failed to load profile details (${response.statusCode}).";
       }
@@ -290,6 +309,9 @@ class ProfileController extends GetxController {
   }
 
   Future<void> logout() async {
+    try {
+      await PushNotificationService.instance.clearDeviceToken();
+    } catch (_) {}
     await SharePrefsHelper.clear();
     Get.offAllNamed(AppRoute.login);
   }
@@ -306,6 +328,16 @@ class ProfileController extends GetxController {
       Get.log("🔄 [switchRole] Status: ${response.statusCode} | Body: ${response.body}");
 
       if (response.statusCode == 200 || response.statusCode == 201) {
+        try {
+          final resData = jsonDecode(response.body);
+          final dataMap = resData['data'] is Map ? resData['data'] : resData;
+          final newAccessToken = (dataMap['accessToken'] ?? dataMap['token'] ?? resData['accessToken'] ?? '').toString();
+          if (newAccessToken.isNotEmpty) {
+            await SharePrefsHelper.setString(SharePrefsHelper.accessTokenKey, newAccessToken);
+            Get.log("🔑 [switchRole] Saved updated activeRole accessToken: $newAccessToken");
+          }
+        } catch (_) {}
+
         // Fetch updated profile to get new role + sellerVerified values
         await fetchProfileData();
 

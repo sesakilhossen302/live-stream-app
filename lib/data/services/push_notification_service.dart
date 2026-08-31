@@ -412,7 +412,6 @@ class PushNotificationService {
         }
         break;
 
-<<<<<<< HEAD
       // 5. AUCTION_WON -> Open in-app Order Checkout / Summary screen
       case 'AUCTION_WON':
         final String prodTitle = (data['productTitle'] ?? data['title'] ?? data['name'] ?? 'Auction Item').toString();
@@ -430,22 +429,6 @@ class PushNotificationService {
           "condition": "AUTHENTICATED",
           "productId": auctionItemId,
         });
-=======
-      // 5. AUCTION_WON -> Open Checkout/Stripe WebView using actionUrl
-      case 'AUCTION_WON':
-        final String actionUrl = (data['actionUrl'] ?? '').toString();
-        final String auctionItemId = (data['auctionItemId'] ?? data['itemId'] ?? '').toString();
-        if (actionUrl.isNotEmpty) {
-          final uri = Uri.tryParse(actionUrl);
-          if (uri != null) {
-            launchUrl(uri, mode: LaunchMode.externalApplication);
-          } else {
-            Get.toNamed(AppRoute.purchases, arguments: {'auctionItemId': auctionItemId});
-          }
-        } else {
-          Get.toNamed(AppRoute.purchases, arguments: {'auctionItemId': auctionItemId});
-        }
->>>>>>> de8e507e15ad8ce63f8a30024ad690138cb76a0b
         break;
 
       // 6. STREAM_LIVE -> Join Agora live stream room for streamId

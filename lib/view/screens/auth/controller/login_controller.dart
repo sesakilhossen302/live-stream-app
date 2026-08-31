@@ -95,10 +95,7 @@ class LoginController extends GetxController {
             await SharePrefsHelper.setString(SharePrefsHelper.userEmailKey, userEmail);
           }
           await SharePrefsHelper.setBool(SharePrefsHelper.isLoginKey, true);
-<<<<<<< HEAD
           await SharePrefsHelper.setGuest(false);
-=======
->>>>>>> de8e507e15ad8ce63f8a30024ad690138cb76a0b
 
           // Guarantee FCM token is synced to profile
           PushNotificationService.instance.syncDeviceToken();

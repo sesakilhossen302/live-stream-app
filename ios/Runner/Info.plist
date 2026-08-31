@@ -7,7 +7,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Live Stream App</string>
+	<string>Culture Cards</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -26,7 +26,6 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
-
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>
@@ -46,6 +45,8 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+
+	<!-- App Transport Security for Network Images & Video Streams -->
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>
@@ -55,16 +56,36 @@
 		<key>NSAllowsArbitraryLoadsInWebContent</key>
 		<true/>
 	</dict>
+
+	<!-- Hardware Permissions for Agora Live Streaming & Camera Uploads -->
 	<key>NSCameraUsageDescription</key>
-	<string>This app needs camera access to take profile pictures</string>
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>This app needs photo library access to select profile pictures</string>
+	<string>Culture Cards requires camera access to host live streaming auctions and capture photos of trade items and profile pictures.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>This app needs microphone access for video recording</string>
+	<string>Culture Cards requires microphone access to broadcast your voice during live streaming auctions.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Culture Cards requires photo library access to upload product cards for trade and auction, set profile images, and save shipping labels.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Culture Cards requires permission to save shipping labels, receipts, and product images to your photo library.</string>
+
+	<!-- Background Modes for Live Audio & Push Notifications -->
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>audio</string>
+		<string>remote-notification</string>
+		<string>fetch</string>
 		<string>voip</string>
 	</array>
+
+	<!-- File & PDF Handling for Shipping Labels -->
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<true/>
+	<key>UIFileSharingEnabled</key>
+	<true/>
+
+	<!-- App Store Export Compliance -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+	<key>UIViewControllerBasedStatusBarAppearance</key>
+	<false/>
 </dict>
 </plist>

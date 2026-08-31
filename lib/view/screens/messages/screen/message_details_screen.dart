@@ -34,7 +34,6 @@ class MessageDetailsScreen extends GetView<MessageDetailsController> {
 
   @override
   Widget build(BuildContext context) {
-    Get.put(MessageDetailsController());
     return CustomBackground(
       safeAreaBottom: false,
       child: Scaffold(

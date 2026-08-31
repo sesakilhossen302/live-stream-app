@@ -74,35 +74,39 @@ class MessageDetailsController extends GetxController {
       hasOrder.value = true;
     }
 
-    if (partnerId.value.isNotEmpty) {
-      fetchPartnerDetails(partnerId.value);
-    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (partnerId.value.isNotEmpty) {
+        fetchPartnerDetails(partnerId.value);
+      }
 
-    if (chatId.value.isNotEmpty) {
-      markAsSeen();
-      fetchAssociatedTrades();
-      fetchMessages(); // initial full load
-      _setupSocketListener();
-      _startPolling(); // fallback polling every 3s
-    } else if (partnerId.value.isNotEmpty) {
-      _resolveExistingChatRoom(partnerId.value);
-    } else {
-      _loadMockMessages();
-    }
+      if (chatId.value.isNotEmpty) {
+        markAsSeen();
+        fetchAssociatedTrades();
+        fetchMessages(); // initial full load
+        _setupSocketListener();
+        _startPolling(); // fallback polling every 3s
+      } else if (partnerId.value.isNotEmpty) {
+        _resolveExistingChatRoom(partnerId.value);
+      } else {
+        _loadMockMessages();
+      }
+    });
   }
 
   void markAsSeen() {
     if (chatId.value.isEmpty || chatId.value.startsWith('mock_')) return;
 
-    // 1. Mark in MessagesController
-    if (Get.isRegistered<MessagesController>()) {
-      Get.find<MessagesController>().markRoomAsRead(chatId.value);
-    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // 1. Mark in MessagesController
+      if (Get.isRegistered<MessagesController>()) {
+        Get.find<MessagesController>().markRoomAsRead(chatId.value);
+      }
 
-    // 2. Mark in MainController
-    if (Get.isRegistered<MainController>()) {
-      Get.find<MainController>().markChatAsRead(chatId.value);
-    }
+      // 2. Mark in MainController
+      if (Get.isRegistered<MainController>()) {
+        Get.find<MainController>().markChatAsRead(chatId.value);
+      }
+    });
 
     // 3. Emit socket events to backend
     try {

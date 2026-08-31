@@ -13,6 +13,7 @@ import '../view/screens/live_stream/screen/go_live_setup_screen.dart';
 import '../view/screens/live_stream/screen/host_live_screen.dart';
 import '../view/screens/live_stream/screen/viewer_live_screen.dart';
 import '../view/screens/messages/screen/message_details_screen.dart';
+import '../view/screens/messages/controller/message_details_controller.dart';
 import '../view/screens/purchases/screen/track_order/screen/track_order_screen.dart';
 import '../view/screens/trade_details/screen/trade_details_screen.dart';
 import '../view/screens/profile/screen/account_settings_screen.dart';
@@ -79,7 +80,13 @@ class AppRoute {
     GetPage(name: main, page: () => const MainScreen()),
     GetPage(name: trackOrder, page: () => const TrackOrderScreen()),
     GetPage(name: tradeDetails, page: () => const TradeDetailsScreen()),
-    GetPage(name: messageDetails, page: () => const MessageDetailsScreen()),
+    GetPage(
+      name: messageDetails,
+      page: () => const MessageDetailsScreen(),
+      binding: BindingsBuilder(() {
+        Get.put<MessageDetailsController>(MessageDetailsController());
+      }),
+    ),
     GetPage(name: liveStream, page: () => const LiveStreamScreen()),
     GetPage(name: goLiveSetup, page: () => const GoLiveSetupScreen()),
     GetPage(name: hostLive, page: () => const HostLiveScreen()),

@@ -189,6 +189,55 @@ class TrackOrderScreen extends StatelessWidget {
                             ),
                           ],
 
+                          // Buyer Action: "Confirm Received"
+                          if (controller.isBuyer && controller.progressFraction < 1.0) ...[
+                            SizedBox(
+                              width: double.infinity,
+                              height: 52.h,
+                              child: Obx(() => ElevatedButton.icon(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF22C55E),
+                                  foregroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.r)),
+                                  elevation: 0,
+                                ),
+                                onPressed: controller.isUpdatingStatus.value
+                                    ? null
+                                    : () async {
+                                        final confirm = await Get.dialog<bool>(
+                                          AlertDialog(
+                                            backgroundColor: const Color(0xFF161622),
+                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24.r)),
+                                            title: Text("Confirm Received", style: TextStyle(color: Colors.white, fontSize: 18.sp, fontWeight: FontWeight.bold)),
+                                            content: Text("Have you received your package in good condition?", style: TextStyle(color: Colors.white70, fontSize: 14.sp)),
+                                            actions: [
+                                              TextButton(
+                                                onPressed: () => Get.back(result: false),
+                                                child: const Text("Cancel", style: TextStyle(color: Colors.white54)),
+                                              ),
+                                              ElevatedButton(
+                                                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF22C55E)),
+                                                onPressed: () => Get.back(result: true),
+                                                child: const Text("Yes, Confirm", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                        if (confirm == true) {
+                                          await controller.confirmDelivery();
+                                        }
+                                      },
+                                icon: controller.isUpdatingStatus.value
+                                    ? SizedBox(width: 20.w, height: 20.w, child: const CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                                    : Icon(Icons.check_circle_outline_rounded, color: Colors.white, size: 20.sp),
+                                label: Text(
+                                  controller.isUpdatingStatus.value ? "Confirming..." : "Confirm Received",
+                                  style: TextStyle(color: Colors.white, fontSize: 15.sp, fontWeight: FontWeight.w800),
+                                ),
+                              )),
+                            ),
+                          ],
+
                           // Buyer-only: delivery confirmation info
                           if (controller.isBuyer && controller.progressFraction >= 1.0)
                             Container(
@@ -504,7 +553,13 @@ class TrackOrderScreen extends StatelessWidget {
           const Divider(color: Colors.white10, thickness: 1),
           SizedBox(height: 24.h),
           _summaryRow("Item", "\$${controller.itemSubtotal.toStringAsFixed(2)}"),
-          _summaryRow("Shipping", "\$${controller.shipping.toStringAsFixed(2)}"),
+          _summaryRow(
+            "Shipping",
+            controller.isBundled
+                ? "Free (Bundled 12h 🎁)"
+                : "\$${controller.shipping.toStringAsFixed(2)}",
+            isHighlight: controller.isBundled,
+          ),
           _summaryRow("Taxes", "\$${controller.taxes.toStringAsFixed(2)}"),
           _summaryRow("Processing Fee", "\$${controller.processingFee.toStringAsFixed(2)}"),
           _summaryRow("Buyer Contribution", "\$${controller.charityContribution.toStringAsFixed(2)}", isHighlight: true),

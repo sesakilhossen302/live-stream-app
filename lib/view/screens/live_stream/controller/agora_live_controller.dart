@@ -336,7 +336,10 @@ class AgoraLiveController extends GetxController with WidgetsBindingObserver {
       });
 
       socketService.on('viewer-count-update', _handleViewerCountUpdate);
+      socketService.on('new-auction-item', _handleAuctionItemStartedEvent);
+      socketService.on('new_auction_item', _handleAuctionItemStartedEvent);
       socketService.on('auction-item-started', _handleAuctionItemStartedEvent);
+      socketService.on('auction_item_started', _handleAuctionItemStartedEvent);
       socketService.on('new-bid', _handleNewBidEvent);
       socketService.on('new_bid', _handleNewBidEvent);
       socketService.on('place-bid', _handleNewBidEvent);
@@ -366,7 +369,9 @@ class AgoraLiveController extends GetxController with WidgetsBindingObserver {
       Map<String, dynamic> itemMap = (data is String)
           ? Map<String, dynamic>.from(jsonDecode(data))
           : Map<String, dynamic>.from(data as Map);
-      if (itemMap.containsKey('data') && itemMap['data'] is Map) {
+      if (itemMap.containsKey('auctionItem') && itemMap['auctionItem'] is Map) {
+        itemMap = Map<String, dynamic>.from(itemMap['auctionItem']);
+      } else if (itemMap.containsKey('data') && itemMap['data'] is Map) {
         itemMap = Map<String, dynamic>.from(itemMap['data']);
       }
 
@@ -648,7 +653,10 @@ class AgoraLiveController extends GetxController with WidgetsBindingObserver {
       });
       socketService.leaveChat(streamId.value);
       socketService.off('viewer-count-update', _handleViewerCountUpdate);
+      socketService.off('new-auction-item', _handleAuctionItemStartedEvent);
+      socketService.off('new_auction_item', _handleAuctionItemStartedEvent);
       socketService.off('auction-item-started', _handleAuctionItemStartedEvent);
+      socketService.off('auction_item_started', _handleAuctionItemStartedEvent);
       socketService.off('new-bid', _handleNewBidEvent);
       socketService.off('bid-error', _handleBidErrorEvent);
       socketService.off('auction-won', _handleAuctionWonEvent);
@@ -2096,29 +2104,7 @@ class AgoraLiveController extends GetxController with WidgetsBindingObserver {
     }
     final activeAuctionItemId = auctionItemId.value;
 
-    // 1. Await backend status update to mark stream as ended in database
-    if (activeStreamId.isNotEmpty) {
-      try {
-        if (activeAuctionItemId.isNotEmpty) {
-          await _apiClient.postData("/auctions/item/$activeAuctionItemId/complete", {});
-        }
-        await _apiClient.patchData("${ApiUrl.startStream}/$activeStreamId/status", {'status': 'ended'});
-        await _apiClient.patchData("${ApiUrl.liveStreams}/$activeStreamId/status", {'status': 'ended'});
-        await _apiClient.postData("${ApiUrl.startStream}/$activeStreamId/end", {});
-        debugPrint("✅ Stream status updated to ended on backend DB for $activeStreamId");
-
-        if (Get.isRegistered<SocketService>()) {
-          Get.find<SocketService>().emitEvent('end-stream', {
-            "streamId": activeStreamId,
-            "sellerId": sellerId.value,
-          });
-        }
-      } catch (e) {
-        debugPrint("⚠️ Backend endStream status update info: $e");
-      }
-    }
-
-    // 2. Instantly reset stream state variables
+    // 1. Instantly reset stream state variables & stop local timers
     isHost.value = false;
     isLive.value = false;
     isMinimized.value = false;
@@ -2137,7 +2123,7 @@ class AgoraLiveController extends GetxController with WidgetsBindingObserver {
     _countdownTimer?.cancel();
     _cleanupSocket();
 
-    // 3. Remove ended stream from local memory list & refresh HomeController
+    // 2. Remove ended stream from local memory list & refresh HomeController
     liveStreamsList.removeWhere((s) => (s['_id'] ?? s['id']) == activeStreamId);
     try {
       if (Get.isRegistered<HomeController>()) {
@@ -2145,7 +2131,7 @@ class AgoraLiveController extends GetxController with WidgetsBindingObserver {
       }
     } catch (_) {}
 
-    // 4. Release engine asynchronously in background
+    // 3. Release engine asynchronously in background
     final activeEngine = engine;
     engine = null;
     if (activeEngine != null) {
@@ -2160,7 +2146,32 @@ class AgoraLiveController extends GetxController with WidgetsBindingObserver {
       });
     }
 
-    // 5. Ensure HomeController is registered & navigate back to Main screen
+    // 4. Fire backend status update & socket event in background without blocking UI exit
+    if (activeStreamId.isNotEmpty) {
+      Future.microtask(() async {
+        try {
+          if (Get.isRegistered<SocketService>()) {
+            Get.find<SocketService>().emitEvent('end-stream', {
+              "streamId": activeStreamId,
+              "sellerId": sellerId.value,
+            });
+          }
+          final futures = <Future>[];
+          if (activeAuctionItemId.isNotEmpty) {
+            futures.add(_apiClient.postData("/auctions/item/$activeAuctionItemId/complete", {}));
+          }
+          futures.add(_apiClient.patchData("${ApiUrl.startStream}/$activeStreamId/status", {'status': 'ended'}));
+          futures.add(_apiClient.patchData("${ApiUrl.liveStreams}/$activeStreamId/status", {'status': 'ended'}));
+          futures.add(_apiClient.postData("${ApiUrl.startStream}/$activeStreamId/end", {}));
+          await Future.wait(futures);
+          debugPrint("✅ Stream status updated to ended on backend DB for $activeStreamId");
+        } catch (e) {
+          debugPrint("⚠️ Backend endStream status update info: $e");
+        }
+      });
+    }
+
+    // 5. Instantly navigate back to Main screen with ZERO delay
     if (!Get.isRegistered<HomeController>()) {
       Get.put(HomeController());
     }

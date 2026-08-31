@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'dart:convert';
 import '../../../../core/app_route.dart';
 import '../../../../global/widgets/custom_background.dart';
@@ -133,11 +132,13 @@ class MessagesScreen extends GetView<MessagesController> {
                             );
                           }
 
+                          final newUpdatesCount = updates.where((u) => u['hasNew'] == true).length;
+
                           return Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               if (updates.isNotEmpty) ...[
-                                _buildSectionHeader("UPDATES", badge: "${updates.length} NEW"),
+                                _buildSectionHeader("UPDATES", badge: newUpdatesCount > 0 ? "$newUpdatesCount NEW" : null),
                                 SizedBox(height: 16.h),
                                 ...updates.map((up) => _buildUpdateCard(
                                   name: up['name'] ?? '',
@@ -332,9 +333,14 @@ class MessagesScreen extends GetView<MessagesController> {
     final String type = (itemData?['type'] ?? '').toString();
     final String prodTitle = (itemData?['productTitle'] ?? '').toString();
     final String amount = (itemData?['amount'] ?? '').toString();
+    final String notifId = (itemData?['id'] ?? '').toString();
 
     return InkWell(
       onTap: () async {
+        if (notifId.isNotEmpty) {
+          controller.markUpdateAsRead(notifId);
+        }
+
         final raw = itemData?['rawItem'] is Map ? Map<String, dynamic>.from(itemData!['rawItem']) : <String, dynamic>{};
         final rawData = raw['data'] is Map ? Map<String, dynamic>.from(raw['data']) : <String, dynamic>{};
         final rawProduct = (raw['product'] is Map)

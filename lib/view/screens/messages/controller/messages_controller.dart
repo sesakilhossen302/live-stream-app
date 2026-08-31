@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../../../data/services/api_client.dart';
 import '../../../../data/services/api_url.dart';
@@ -16,6 +17,7 @@ class MessagesController extends GetxController {
   final chatRooms = <Map<String, dynamic>>[].obs;
   final updateLogs = <Map<String, dynamic>>[].obs;
   final Set<String> locallyReadChatIds = <String>{};
+  final Set<String> locallyReadNotificationIds = <String>{};
 
   void markRoomAsRead(String roomId) {
     if (roomId.isEmpty) return;
@@ -34,18 +36,39 @@ class MessagesController extends GetxController {
     _updateGlobalBadge();
   }
 
+  void markUpdateAsRead(String notifId) {
+    if (notifId.isEmpty) return;
+    locallyReadNotificationIds.add(notifId);
+
+    final index = updateLogs.indexWhere((u) => u['id'] == notifId);
+    if (index != -1) {
+      final updated = Map<String, dynamic>.from(updateLogs[index]);
+      updated['hasNew'] = false;
+      updateLogs[index] = updated;
+      updateLogs.refresh();
+    }
+
+    try {
+      _apiClient.patchData("/notifications/$notifId/read", {});
+    } catch (_) {}
+
+    _updateGlobalBadge();
+  }
+
   void _updateGlobalBadge() {
-    int totalUnread = 0;
-    for (var r in chatRooms) {
-      final String id = r['id']?.toString() ?? '';
-      if (locallyReadChatIds.contains(id)) continue;
-      if (r['isSpecial'] == true || r['isUnread'] == true) {
-        totalUnread++;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      int totalUnread = 0;
+      for (var r in chatRooms) {
+        final String id = r['id']?.toString() ?? '';
+        if (locallyReadChatIds.contains(id)) continue;
+        if (r['isSpecial'] == true || r['isUnread'] == true) {
+          totalUnread++;
+        }
       }
-    }
-    if (Get.isRegistered<MainController>()) {
-      Get.find<MainController>().unreadMessageCount.value = totalUnread;
-    }
+      if (Get.isRegistered<MainController>()) {
+        Get.find<MainController>().unreadMessageCount.value = totalUnread;
+      }
+    });
   }
 
   @override
@@ -379,10 +402,13 @@ class MessagesController extends GetxController {
               itemAvatar = "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=200";
             }
 
+            final String notifId = (item['_id'] ?? item['id'] ?? '').toString();
+            final bool isLocallyRead = locallyReadNotificationIds.contains(notifId);
             final time = item['createdAt'] ?? "";
-            final isRead = item['isRead'] == true;
+            final isRead = (item['isRead'] == true) || isLocallyRead;
 
             parsedUpdates.add({
+              "id": notifId,
               "name": title.startsWith('@') ? title.substring(1) : title,
               "message": msg,
               "time": _formatTime(time),

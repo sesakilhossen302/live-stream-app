@@ -201,9 +201,19 @@ class TrackOrderController extends GetxController {
 
   double get shipping {
     final val = amountDetails['shipping'];
-    if (val != null) return double.tryParse(val.toString()) ?? 15.0;
-    return fallbackModel?.shippingPrice ?? 15.0;
+    if (val != null) return double.tryParse(val.toString()) ?? 0.0;
+    return fallbackModel?.shippingPrice ?? 0.0;
   }
+
+  bool get isBundled => shipping == 0.0;
+
+  double get shippingWeightValue {
+    final raw = orderData['shippingWeight'] ?? orderData['weight'] ?? orderData['product']?['shippingWeight'];
+    if (raw != null) return (raw as num?)?.toDouble() ?? 1.0;
+    return 1.0;
+  }
+
+  String get shippingLabelUrl => (orderData['shippingLabelUrl'] ?? fallbackModel?.shippingLabelUrl ?? '').toString();
 
   double get taxes {
     final val = amountDetails['taxes'];
@@ -362,6 +372,50 @@ class TrackOrderController extends GetxController {
     } catch (e) {
       Get.log("Error updating journey: $e");
       Get.snackbar("Error", "$e", snackPosition: SnackPosition.BOTTOM);
+      return false;
+    } finally {
+      isUpdatingStatus.value = false;
+    }
+  }
+
+  Future<bool> confirmDelivery() async {
+    final rawId = (fallbackModel?.rawOrderId != null && fallbackModel!.rawOrderId!.isNotEmpty)
+        ? fallbackModel!.rawOrderId!
+        : (orderData['_id'] ?? orderData['id'] ?? orderId).toString();
+
+    if (rawId.isEmpty || rawId.startsWith('#ORD-')) {
+      Get.snackbar("Error", "Invalid Order ID", snackPosition: SnackPosition.BOTTOM);
+      return false;
+    }
+
+    isUpdatingStatus.value = true;
+    try {
+      final payload = {
+        "status": "Delivered",
+        "description": "Package received and confirmed by buyer",
+        "location": "Delivered to buyer",
+        "deliveryStatus": "delivered",
+      };
+
+      final response = await _apiClient.patchData("/orders/journey/$rawId", payload);
+      await _apiClient.patchData("/orders/$rawId/status", {"status": "delivered", "deliveryStatus": "delivered"});
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        await fetchOrderDetails();
+        Get.snackbar(
+          "Delivery Confirmed 🎉",
+          "You've confirmed receipt of your order. Thank you!",
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: const Color(0xFF22C55E),
+          colorText: Colors.white,
+        );
+        return true;
+      } else {
+        await fetchOrderDetails();
+        return true;
+      }
+    } catch (e) {
+      Get.log("Confirm delivery error: $e");
       return false;
     } finally {
       isUpdatingStatus.value = false;

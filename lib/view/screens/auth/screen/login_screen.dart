@@ -161,6 +161,70 @@ class LoginScreen extends GetView<LoginController> {
                       ),
                     ],
                   ),
+
+                  SizedBox(height: 24.h),
+
+                  // Divider with OR
+                  Row(
+                    children: [
+                      Expanded(child: Divider(color: Colors.white.withOpacity(0.08))),
+                      Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 12.w),
+                        child: Text(
+                          "OR",
+                          style: TextStyle(
+                            color: Colors.white24,
+                            fontSize: 11.sp,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1.2,
+                          ),
+                        ),
+                      ),
+                      Expanded(child: Divider(color: Colors.white.withOpacity(0.08))),
+                    ],
+                  ),
+
+                  SizedBox(height: 20.h),
+
+                  // Continue as Guest Button
+                  GestureDetector(
+                    onTap: () => controller.continueAsGuest(),
+                    child: Container(
+                      padding: EdgeInsets.symmetric(vertical: 12.h, horizontal: 20.w),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.04),
+                        borderRadius: BorderRadius.circular(24.r),
+                        border: Border.all(color: Colors.white.withOpacity(0.08)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.explore_outlined,
+                            color: const Color(0xFF8B9BFF),
+                            size: 18.sp,
+                          ),
+                          SizedBox(width: 8.w),
+                          Text(
+                            "Continue as Guest",
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 13.sp,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0.3,
+                            ),
+                          ),
+                          SizedBox(width: 4.w),
+                          Icon(
+                            Icons.arrow_forward_ios_rounded,
+                            color: Colors.white38,
+                            size: 11.sp,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),

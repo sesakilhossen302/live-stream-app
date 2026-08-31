@@ -10,6 +10,7 @@ import '../../../../data/services/socket_service.dart';
 import '../../../../core/app_route.dart';
 import '../../purchases/controller/purchases_controller.dart';
 import '../../purchases/model/purchase_model.dart';
+import '../../../../global/helper/auth_guard.dart';
 
 class TradeDetailsController extends GetxController {
   final ApiClient _apiClient = Get.find<ApiClient>();
@@ -70,6 +71,17 @@ class TradeDetailsController extends GetxController {
   int get totalImages => (product['images'] as List?)?.length ?? 1;
 
   Future<void> buyProduct() async {
+    if (!AuthGuard.check(
+      title: "Sign in to Buy",
+      message: "Guest mode is browse-only. Sign in or create an account to purchase items.",
+    )) {
+      return;
+    }
+
+    Get.toNamed(AppRoute.checkout, arguments: product);
+  }
+
+  Future<void> processDirectCheckout() async {
     isOrdering.value = true;
     try {
       final productId = product['_id'] ?? product['id'] ?? "";
@@ -153,8 +165,10 @@ class TradeDetailsController extends GetxController {
       final pubKey = data['publishableKey'] ?? data['stripePublishableKey'] ?? data['pk'];
       if (pubKey != null && pubKey.toString().isNotEmpty) {
         Stripe.publishableKey = pubKey.toString();
-        await Stripe.instance.applySettings();
+      } else {
+        Stripe.publishableKey = "pk_test_51NJLdJF5nDLFMGmox0iseTJZp42wfLi6Ub41OGs7hoMl0GSFe93a0My7PxdF2eKsxV1rvUf8vVw4p6jl9h9pCmEQ00WSln5w44";
       }
+      await Stripe.instance.applySettings();
 
       await Stripe.instance.initPaymentSheet(
         paymentSheetParameters: SetupPaymentSheetParameters(

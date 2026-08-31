@@ -3,6 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
 import '../../view/screens/main/controller/main_controller.dart';
+import '../helper/auth_guard.dart';
 
 class CustomBottomNavbar extends StatelessWidget {
   const CustomBottomNavbar({super.key});
@@ -63,7 +64,13 @@ class CustomBottomNavbar extends StatelessWidget {
           Positioned(
             top: 0,
             child: GestureDetector(
-              onTap: () => Get.toNamed('/create_trade'),
+              onTap: () {
+                AuthGuard.check(
+                  title: "Sign in to Create a Trade",
+                  message: "Guest mode is browse-only. Sign in to list items and start trading with others.",
+                  onAuthorized: () => Get.toNamed('/create_trade'),
+                );
+              },
               child: Container(
                 width: 72.w,
                 height: 72.w,

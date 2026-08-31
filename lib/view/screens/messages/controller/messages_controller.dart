@@ -56,6 +56,11 @@ class MessagesController extends GetxController {
   }
 
   Future<void> fetchChatRooms() async {
+    if (SharePrefsHelper.isGuest || SharePrefsHelper.getString(SharePrefsHelper.accessTokenKey).isEmpty) {
+      isLoading.value = false;
+      chatRooms.clear();
+      return;
+    }
     isLoading.value = true;
     try {
       final response = await _apiClient.getData(ApiUrl.chat);
@@ -288,6 +293,10 @@ class MessagesController extends GetxController {
   }
 
   Future<void> fetchNotifications() async {
+    if (SharePrefsHelper.isGuest || SharePrefsHelper.getString(SharePrefsHelper.accessTokenKey).isEmpty) {
+      updateLogs.clear();
+      return;
+    }
     try {
       final response = await _apiClient.getData(ApiUrl.myNotifications);
       if (response.statusCode == 200) {
@@ -295,8 +304,81 @@ class MessagesController extends GetxController {
         if (data.isNotEmpty) {
           final List<Map<String, dynamic>> parsedUpdates = [];
           for (var item in data) {
-            final title = item['title'] ?? "Notification";
-            final msg = item['message'] ?? "";
+            final title = (item['title'] ?? "Notification").toString();
+            final String rawType = (item['type'] ?? 'Alert').toString();
+            final itemData = item['data'] is Map ? item['data'] : <String, dynamic>{};
+
+            // Extract product title/name if available
+            String prodTitle = (item['productTitle'] ??
+                item['productName'] ??
+                item['itemName'] ??
+                itemData['productTitle'] ??
+                itemData['title'] ??
+                itemData['name'] ??
+                '')?.toString() ?? '';
+
+            if (prodTitle.isEmpty && item['product'] != null) {
+              if (item['product'] is Map) {
+                prodTitle = (item['product']['title'] ?? item['product']['name'] ?? '').toString();
+              } else if (item['product'] is String) {
+                prodTitle = item['product'].toString();
+              }
+            }
+
+            // Extract winning bid / price if available
+            final rawAmount = item['winningBid'] ??
+                item['amount'] ??
+                item['bidAmount'] ??
+                item['price'] ??
+                itemData['winningBid'] ??
+                itemData['amount'] ??
+                itemData['bidAmount'];
+            final String amountStr = rawAmount != null ? "\$$rawAmount" : "";
+
+            // Determine message text
+            String msg = (item['text'] ??
+                item['message'] ??
+                item['body'] ??
+                item['description'] ??
+                itemData['message'] ??
+                itemData['text'] ??
+                '')?.toString() ?? '';
+
+            if (rawType.toUpperCase().contains('AUCTION_WON') || title.toUpperCase().contains('AUCTION WON')) {
+              if (prodTitle.isNotEmpty && amountStr.isNotEmpty) {
+                msg = "Won '$prodTitle' for $amountStr! Tap to view details and complete order.";
+              } else if (prodTitle.isNotEmpty) {
+                msg = "Won '$prodTitle'! Tap to view details and complete order.";
+              } else if (amountStr.isNotEmpty) {
+                msg = "Winning Bid: $amountStr! Tap to view details and complete order.";
+              } else if (msg.isEmpty) {
+                msg = "Congratulations! You won the live auction. Tap to view item & shipping.";
+              }
+            } else if (msg.isEmpty && prodTitle.isNotEmpty) {
+              msg = "Item: $prodTitle ${amountStr.isNotEmpty ? '($amountStr)' : ''}";
+            }
+
+            // Extract avatar / image
+            String itemAvatar = (item['avatarUrl'] ??
+                item['avatar'] ??
+                item['imageUrl'] ??
+                item['image'] ??
+                itemData['image'] ??
+                itemData['avatar'] ??
+                '')?.toString() ?? '';
+
+            if (itemAvatar.isEmpty && item['product'] is Map) {
+              final pImgs = item['product']['images'] ?? item['product']['image'];
+              if (pImgs is List && pImgs.isNotEmpty) {
+                itemAvatar = pImgs[0].toString();
+              } else if (pImgs is String) {
+                itemAvatar = pImgs;
+              }
+            }
+            if (itemAvatar.isEmpty) {
+              itemAvatar = "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=200";
+            }
+
             final time = item['createdAt'] ?? "";
             final isRead = item['isRead'] == true;
 
@@ -305,8 +387,14 @@ class MessagesController extends GetxController {
               "message": msg,
               "time": _formatTime(time),
               "hasNew": !isRead,
-              "avatar": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=200",
-              "tags": [item['type'] ?? "Alert"],
+              "avatar": itemAvatar,
+              "tags": [rawType],
+              "type": rawType,
+              "actionUrl": (item['actionUrl'] ?? itemData['actionUrl'] ?? item['checkoutUrl'] ?? itemData['checkoutUrl'] ?? '')?.toString(),
+              "orderId": (item['orderId'] ?? itemData['orderId'] ?? '')?.toString(),
+              "productTitle": prodTitle,
+              "amount": amountStr,
+              "rawItem": item,
             });
           }
           updateLogs.assignAll(parsedUpdates);

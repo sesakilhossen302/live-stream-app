@@ -2176,8 +2176,10 @@ class AgoraLiveController extends GetxController with WidgetsBindingObserver {
       final pubKey = data['publishableKey'] ?? data['stripePublishableKey'] ?? data['pk'];
       if (pubKey != null && pubKey.toString().isNotEmpty) {
         Stripe.publishableKey = pubKey.toString();
-        await Stripe.instance.applySettings();
+      } else {
+        Stripe.publishableKey = "pk_test_51NJLdJF5nDLFMGmox0iseTJZp42wfLi6Ub41OGs7hoMl0GSFe93a0My7PxdF2eKsxV1rvUf8vVw4p6jl9h9pCmEQ00WSln5w44";
       }
+      await Stripe.instance.applySettings();
 
       await Stripe.instance.initPaymentSheet(
         paymentSheetParameters: SetupPaymentSheetParameters(

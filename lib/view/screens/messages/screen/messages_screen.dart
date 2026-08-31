@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'dart:convert';
 import '../../../../core/app_route.dart';
 import '../../../../global/widgets/custom_background.dart';
 import '../controller/messages_controller.dart';
 import '../../../../global/widgets/custom_shimmer.dart';
 import '../../../../data/services/api_url.dart';
+import '../../../../data/helpers/shared_prefe.dart';
 
 class MessagesScreen extends GetView<MessagesController> {
   const MessagesScreen({super.key});
@@ -61,6 +63,10 @@ class MessagesScreen extends GetView<MessagesController> {
                         SizedBox(height: 32.h),
                         
                         Obx(() {
+                          if (SharePrefsHelper.isGuest || SharePrefsHelper.getString(SharePrefsHelper.accessTokenKey).isEmpty) {
+                            return _buildGuestMessagesView();
+                          }
+
                           if (controller.isLoading.value) {
                             return Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -140,6 +146,7 @@ class MessagesScreen extends GetView<MessagesController> {
                                   hasNew: up['hasNew'] == true,
                                   avatar: up['avatar'] ?? '',
                                   tags: List<String>.from(up['tags'] ?? []),
+                                  itemData: up,
                                 )),
                                 SizedBox(height: 32.h),
                               ],
@@ -313,9 +320,58 @@ class MessagesScreen extends GetView<MessagesController> {
     );
   }
 
-  Widget _buildUpdateCard({required String name, required String message, required String time, required String avatar, List<String> tags = const [], bool hasNew = false}) {
+  Widget _buildUpdateCard({
+    required String name,
+    required String message,
+    required String time,
+    required String avatar,
+    List<String> tags = const [],
+    bool hasNew = false,
+    Map<String, dynamic>? itemData,
+  }) {
+    final String type = (itemData?['type'] ?? '').toString();
+    final String prodTitle = (itemData?['productTitle'] ?? '').toString();
+    final String amount = (itemData?['amount'] ?? '').toString();
+
     return InkWell(
-      onTap: () => Get.toNamed(AppRoute.messageDetails),
+      onTap: () async {
+        final raw = itemData?['rawItem'] is Map ? Map<String, dynamic>.from(itemData!['rawItem']) : <String, dynamic>{};
+        final rawData = raw['data'] is Map ? Map<String, dynamic>.from(raw['data']) : <String, dynamic>{};
+        final rawProduct = (raw['product'] is Map)
+            ? Map<String, dynamic>.from(raw['product'])
+            : (rawData['product'] is Map ? Map<String, dynamic>.from(rawData['product']) : <String, dynamic>{});
+
+        if (type.toUpperCase().contains('AUCTION')) {
+          final String title = prodTitle.isNotEmpty
+              ? prodTitle
+              : (rawProduct['title'] ?? rawProduct['name'] ?? rawData['title'] ?? rawData['productTitle'] ?? name.replaceAll('🏆', '').trim()).toString();
+
+          final String price = amount.replaceAll('\$', '').trim().isNotEmpty
+              ? amount.replaceAll('\$', '').trim()
+              : (raw['amount'] ?? rawData['amount'] ?? rawData['winningBid'] ?? rawProduct['price'] ?? '150').toString();
+
+          final dynamic imgs = rawProduct['images'] ?? rawProduct['image'] ?? raw['image'] ?? rawData['image'] ?? (avatar.isNotEmpty ? avatar : '');
+
+          Get.toNamed(AppRoute.checkout, arguments: {
+            "title": title,
+            "buyNowPrice": price,
+            "estValue": price,
+            "images": imgs is List ? imgs : [imgs],
+            "sellerId": rawProduct['sellerId'] ?? raw['sellerId'] ?? rawData['sellerId'] ?? raw['seller'] ?? '',
+            "condition": rawProduct['condition'] ?? "AUTHENTICATED",
+            "productId": rawProduct['_id'] ?? rawProduct['id'] ?? raw['productId'] ?? rawData['productId'] ?? raw['auctionItemId'] ?? rawData['auctionItemId'] ?? '',
+          });
+          return;
+        }
+
+        if (type.toUpperCase().contains('ORDER') || type.toUpperCase().contains('PURCHASE')) {
+          Get.toNamed(AppRoute.purchases);
+        } else if (type.toUpperCase().contains('TRADE')) {
+          Get.toNamed(AppRoute.myTrades);
+        } else {
+          Get.toNamed(AppRoute.purchases);
+        }
+      },
       borderRadius: BorderRadius.circular(24.r),
       child: Container(
         margin: EdgeInsets.only(bottom: 16.h),
@@ -323,8 +379,10 @@ class MessagesScreen extends GetView<MessagesController> {
         decoration: BoxDecoration(
           color: const Color(0xFF161622),
           borderRadius: BorderRadius.circular(24.r),
+          border: hasNew ? Border.all(color: const Color(0xFF8B9BFF).withOpacity(0.35), width: 1.2) : null,
         ),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -338,7 +396,14 @@ class MessagesScreen extends GetView<MessagesController> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(name, style: TextStyle(color: Colors.white, fontSize: 16.sp, fontWeight: FontWeight.w900)),
+                          Expanded(
+                            child: Text(
+                              name,
+                              style: TextStyle(color: Colors.white, fontSize: 16.sp, fontWeight: FontWeight.w900),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
                           Row(
                             children: [
                               Text(time, style: TextStyle(color: Colors.white38, fontSize: 11.sp, fontWeight: FontWeight.w700)),
@@ -350,23 +415,42 @@ class MessagesScreen extends GetView<MessagesController> {
                           ),
                         ],
                       ),
-                      SizedBox(height: 4.h),
-                      Text(message, style: TextStyle(color: Colors.white70, fontSize: 14.sp, fontWeight: FontWeight.w500)),
+                      if (message.isNotEmpty) ...[
+                        SizedBox(height: 6.h),
+                        Text(
+                          message,
+                          style: TextStyle(color: Colors.white70, fontSize: 13.sp, fontWeight: FontWeight.w500, height: 1.3),
+                        ),
+                      ],
                     ],
                   ),
                 ),
               ],
             ),
-            SizedBox(height: 16.h),
+            SizedBox(height: 14.h),
             Row(
               children: [
                 SizedBox(width: 64.w),
-                ...tags.map((tag) => Container(
-                  margin: EdgeInsets.only(right: 8.w),
-                  padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
-                  decoration: BoxDecoration(color: Colors.black26, borderRadius: BorderRadius.circular(10.r)),
-                  child: Text(tag, style: TextStyle(color: Colors.white38, fontSize: 11.sp, fontWeight: FontWeight.w800)),
-                )),
+                ...tags.map((tag) {
+                  final isAuction = tag.toUpperCase().contains('AUCTION');
+                  return Container(
+                    margin: EdgeInsets.only(right: 8.w),
+                    padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 5.h),
+                    decoration: BoxDecoration(
+                      color: isAuction ? const Color(0xFFFFB800).withOpacity(0.15) : Colors.black26,
+                      borderRadius: BorderRadius.circular(10.r),
+                      border: isAuction ? Border.all(color: const Color(0xFFFFB800).withOpacity(0.3)) : null,
+                    ),
+                    child: Text(
+                      tag,
+                      style: TextStyle(
+                        color: isAuction ? const Color(0xFFFFB800) : Colors.white54,
+                        fontSize: 10.sp,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  );
+                }),
               ],
             ),
           ],
@@ -513,6 +597,75 @@ class MessagesScreen extends GetView<MessagesController> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildGuestMessagesView() {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 60.h, horizontal: 16.w),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 80.r,
+              height: 80.r,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withOpacity(0.04),
+                border: Border.all(color: const Color(0xFF8B9BFF).withOpacity(0.2), width: 1.5),
+              ),
+              child: Icon(
+                Icons.chat_bubble_outline_rounded,
+                color: const Color(0xFF8B9BFF),
+                size: 38.sp,
+              ),
+            ),
+            SizedBox(height: 24.h),
+            Text(
+              "Direct Messages",
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 20.sp,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            SizedBox(height: 10.h),
+            Text(
+              "Guest mode is browse-only. Sign in or create an account to chat with traders and receive order notifications.",
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.white54,
+                fontSize: 13.sp,
+                height: 1.4,
+              ),
+            ),
+            SizedBox(height: 28.h),
+            SizedBox(
+              width: double.infinity,
+              height: 50.h,
+              child: ElevatedButton(
+                onPressed: () => Get.toNamed(AppRoute.login),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF8B9BFF),
+                  foregroundColor: const Color(0xFF0F0B1E),
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(25.r),
+                  ),
+                ),
+                child: Text(
+                  "Log In to Chat",
+                  style: TextStyle(
+                    fontSize: 15.sp,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

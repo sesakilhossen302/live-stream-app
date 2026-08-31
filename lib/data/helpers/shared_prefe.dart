@@ -7,6 +7,10 @@ class SharePrefsHelper {
   static const String userIdKey = "userId";
   static const String userEmailKey = "userEmail";
   static const String fcmTokenKey = "fcmDeviceToken";
+  static const String isGuestKey = "isGuest";
+
+  static bool get isGuest => getBool(isGuestKey);
+  static Future<bool> setGuest(bool value) => setBool(isGuestKey, value);
 
   static SharedPreferences? _prefs;
 

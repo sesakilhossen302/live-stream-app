@@ -412,20 +412,23 @@ class PushNotificationService {
         }
         break;
 
-      // 5. AUCTION_WON -> Open Checkout/Stripe WebView using actionUrl
+      // 5. AUCTION_WON -> Open in-app Order Checkout / Summary screen
       case 'AUCTION_WON':
-        final String actionUrl = (data['actionUrl'] ?? '').toString();
-        final String auctionItemId = (data['auctionItemId'] ?? data['itemId'] ?? '').toString();
-        if (actionUrl.isNotEmpty) {
-          final uri = Uri.tryParse(actionUrl);
-          if (uri != null) {
-            launchUrl(uri, mode: LaunchMode.externalApplication);
-          } else {
-            Get.toNamed(AppRoute.purchases, arguments: {'auctionItemId': auctionItemId});
-          }
-        } else {
-          Get.toNamed(AppRoute.purchases, arguments: {'auctionItemId': auctionItemId});
-        }
+        final String prodTitle = (data['productTitle'] ?? data['title'] ?? data['name'] ?? 'Auction Item').toString();
+        final String price = (data['amount'] ?? data['winningBid'] ?? data['price'] ?? '150').toString().replaceAll('\$', '').trim();
+        final String auctionItemId = (data['auctionItemId'] ?? data['itemId'] ?? data['productId'] ?? '').toString();
+        final String sellerId = (data['sellerId'] ?? '').toString();
+        final String img = (data['imageUrl'] ?? data['image'] ?? '').toString();
+
+        Get.toNamed(AppRoute.checkout, arguments: {
+          "title": prodTitle,
+          "buyNowPrice": price,
+          "estValue": price,
+          "images": img.isNotEmpty ? [img] : [],
+          "sellerId": sellerId,
+          "condition": "AUTHENTICATED",
+          "productId": auctionItemId,
+        });
         break;
 
       // 6. STREAM_LIVE -> Join Agora live stream room for streamId

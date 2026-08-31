@@ -63,6 +63,15 @@ class ProfileController extends GetxController {
   }
 
   Future<void> fetchProfileData() async {
+    if (SharePrefsHelper.isGuest || SharePrefsHelper.getString(SharePrefsHelper.accessTokenKey).isEmpty) {
+      isLoading.value = false;
+      hasError.value = false;
+      name.value = "Guest User";
+      username.value = "@guest";
+      description.value = "You are currently browsing as a guest.";
+      return;
+    }
+
     isLoading.value = true;
     hasError.value = false;
     errorMessage.value = "";

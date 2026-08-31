@@ -302,6 +302,11 @@ class ApiClient {
     http.Response response,
     Future<http.Response> Function() retryAction,
   ) async {
+    // If in Guest mode, do not trigger forced logout or refresh token logic
+    if (SharePrefsHelper.isGuest || SharePrefsHelper.getString(SharePrefsHelper.accessTokenKey).isEmpty) {
+      return response;
+    }
+
     // Check if session/token is expired or account is invalid
     if (response.statusCode >= 400) {
       try {

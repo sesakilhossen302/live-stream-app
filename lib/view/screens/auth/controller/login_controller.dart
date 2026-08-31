@@ -95,6 +95,7 @@ class LoginController extends GetxController {
             await SharePrefsHelper.setString(SharePrefsHelper.userEmailKey, userEmail);
           }
           await SharePrefsHelper.setBool(SharePrefsHelper.isLoginKey, true);
+          await SharePrefsHelper.setGuest(false);
 
           // Guarantee FCM token is synced to profile
           PushNotificationService.instance.syncDeviceToken();
@@ -134,6 +135,11 @@ class LoginController extends GetxController {
     } finally {
       isLoading.value = false;
     }
+  }
+
+  Future<void> continueAsGuest() async {
+    await SharePrefsHelper.setGuest(true);
+    Get.offAllNamed(AppRoute.main);
   }
 
   void onSignUp() {

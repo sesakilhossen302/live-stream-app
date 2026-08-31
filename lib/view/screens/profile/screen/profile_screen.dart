@@ -10,6 +10,7 @@ import '../controller/profile_controller.dart';
 import '../../../../data/services/api_url.dart';
 import '../../../../global/widgets/custom_shimmer.dart';
 import '../../../../global/widgets/custom_empty_state.dart';
+import '../../../../data/helpers/shared_prefe.dart';
 
 class ProfileScreen extends GetView<ProfileController> {
   const ProfileScreen({super.key});
@@ -50,6 +51,10 @@ class ProfileScreen extends GetView<ProfileController> {
                     parent: BouncingScrollPhysics(),
                   ),
                   child: Obx(() {
+                    if (SharePrefsHelper.isGuest || SharePrefsHelper.getString(SharePrefsHelper.accessTokenKey).isEmpty) {
+                      return _buildGuestProfileView();
+                    }
+
                     if (controller.hasError.value && controller.name.value.isEmpty) {
                       return Padding(
                         padding: EdgeInsets.only(top: 80.h),
@@ -1790,6 +1795,108 @@ class ProfileScreen extends GetView<ProfileController> {
             ),
             child: const Text("Sign Out", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGuestProfileView() {
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 32.h),
+      child: Column(
+        children: [
+          SizedBox(height: 20.h),
+          // Guest Avatar
+          Container(
+            width: 100.r,
+            height: 100.r,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.white.withOpacity(0.04),
+              border: Border.all(color: const Color(0xFF8B9BFF).withOpacity(0.3), width: 2),
+            ),
+            child: Icon(
+              Icons.person_outline_rounded,
+              color: const Color(0xFF8B9BFF),
+              size: 54.sp,
+            ),
+          ),
+          SizedBox(height: 20.h),
+          Text(
+            "Guest User",
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 22.sp,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          SizedBox(height: 10.h),
+          Text(
+            "You are currently browsing as a guest. Sign in or create an account to manage your profile, host live auctions, bid, and trade.",
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.white60,
+              fontSize: 13.sp,
+              height: 1.5,
+            ),
+          ),
+          SizedBox(height: 32.h),
+          // Log In Button
+          SizedBox(
+            width: double.infinity,
+            height: 52.h,
+            child: ElevatedButton(
+              onPressed: () => Get.toNamed(AppRoute.login),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF8B9BFF),
+                foregroundColor: const Color(0xFF0F0B1E),
+                elevation: 0,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(26.r)),
+              ),
+              child: Text(
+                "Log In",
+                style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w800),
+              ),
+            ),
+          ),
+          SizedBox(height: 14.h),
+          // Sign Up Button
+          SizedBox(
+            width: double.infinity,
+            height: 52.h,
+            child: OutlinedButton(
+              onPressed: () => Get.toNamed(AppRoute.signUp),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.white,
+                side: BorderSide(color: Colors.white.withOpacity(0.2)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(26.r)),
+              ),
+              child: Text(
+                "Create Account",
+                style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w700),
+              ),
+            ),
+          ),
+          SizedBox(height: 36.h),
+          // Additional links
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.03),
+              borderRadius: BorderRadius.circular(20.r),
+              border: Border.all(color: Colors.white.withOpacity(0.06)),
+            ),
+            child: Column(
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.description_outlined, color: Color(0xFF8B9BFF)),
+                  title: const Text("Terms & Conditions", style: TextStyle(color: Colors.white)),
+                  trailing: const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white38, size: 14),
+                  onTap: () => Get.toNamed(AppRoute.terms),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(height: 100.h),
         ],
       ),
     );

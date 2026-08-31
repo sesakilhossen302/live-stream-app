@@ -62,11 +62,7 @@ class TrackOrderScreen extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          SizedBox(height: 24.h),
-                          // Map Section
-                          _buildMapSection(controller),
-                          
-                          SizedBox(height: 32.h),
+                          SizedBox(height: 16.h),
                           
                           // Status Card
                           _buildStatusCard(controller),
@@ -233,90 +229,6 @@ class TrackOrderScreen extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildMapSection(TrackOrderController controller) {
-    return Container(
-      height: 240.h,
-      width: double.infinity,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(32.r),
-        image: const DecorationImage(
-          image: NetworkImage("https://images.unsplash.com/photo-1526778548025-fa2f459cd5c1?q=80&w=2066&auto=format&fit=crop"),
-          fit: BoxFit.cover,
-          colorFilter: ColorFilter.mode(Colors.black54, BlendMode.darken),
-        ),
-      ),
-      child: Stack(
-        children: [
-          Positioned.fill(
-            child: SizedBox.expand(
-              child: Container(
-                color: Colors.black45,
-              ),
-            ),
-          ),
-          Positioned(
-            left: 24.w,
-            bottom: 24.h,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.4),
-                    borderRadius: BorderRadius.circular(12.r),
-                    border: Border.all(color: Colors.white10),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.circle, color: const Color(0xFF97A9FF), size: 6.sp),
-                      SizedBox(width: 8.w),
-                      Text("LIVE TRACKING", style: TextStyle(color: const Color(0xFF97A9FF), fontSize: 10.sp, fontWeight: FontWeight.w800)),
-                    ],
-                  ),
-                ),
-                SizedBox(height: 12.h),
-                Builder(builder: (ctx) {
-                  final loc = controller.currentLocation;
-                  final statusLoc = controller.deliveryStatus.toLowerCase().contains('deliver')
-                      ? "Order Delivered ✅"
-                      : loc.isNotEmpty
-                          ? loc
-                          : "In Transit";
-                  return Text(
-                    statusLoc,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 22.sp,
-                      fontWeight: FontWeight.w900,
-                      height: 1.2,
-                    ),
-                  );
-                }),
-              ],
-            ),
-          ),
-          Positioned(
-            right: 24.w,
-            bottom: 24.h,
-            child: Container(
-              padding: EdgeInsets.all(16.r),
-              decoration: BoxDecoration(
-                color: const Color(0xFF8B9BFF),
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(color: const Color(0xFF8B9BFF).withOpacity(0.3), blurRadius: 15.r, spreadRadius: 2.r),
-                ],
-              ),
-              child: Icon(Icons.near_me_rounded, color: Colors.black, size: 24.sp),
-            ),
-          ),
-        ],
       ),
     );
   }

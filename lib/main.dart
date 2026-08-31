@@ -56,10 +56,11 @@ void main() async {
   }
 
   final String accessToken = SharePrefsHelper.getString(SharePrefsHelper.accessTokenKey);
+  final bool isGuest = SharePrefsHelper.isGuest;
   final bool hasSeenOnboarding = SharePrefsHelper.getBool("hasSeenOnboarding");
 
   String initialRoute;
-  if (accessToken.isNotEmpty) {
+  if (accessToken.isNotEmpty || isGuest) {
     initialRoute = AppRoute.main;
   } else if (hasSeenOnboarding) {
     initialRoute = AppRoute.login;

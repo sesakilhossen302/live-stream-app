@@ -31,9 +31,11 @@ import '../view/screens/discover/screen/all_live_shows_screen.dart';
 import '../view/screens/purchases/screen/shipping_label_viewer_screen.dart';
 import '../view/screens/sold_items/screen/sold_items_screen.dart';
 import '../view/screens/spin_wheel/screen/spin_wheel_screen.dart';
+import '../view/screens/checkout/screen/order_checkout_screen.dart';
 
 class AppRoute {
   static final routeStream = StreamController<String>.broadcast();
+  static const String checkout = "/checkout";
   static const String forgotPassword = "/forgotPassword";
   static const String onboarding = "/onboarding";
   static const String login = "/login";
@@ -101,5 +103,6 @@ class AppRoute {
     GetPage(name: soldItems, page: () => const SoldItemsScreen()),
     GetPage(name: shippingLabel, page: () => const ShippingLabelViewerScreen()),
     GetPage(name: spinWheel, page: () => const SpinWheelScreen()),
+    GetPage(name: checkout, page: () => const OrderCheckoutScreen()),
   ];
 }

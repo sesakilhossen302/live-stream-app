@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import '../../../../global/widgets/custom_background.dart';
 import '../controller/discover_controller.dart';
 import '../../../../core/app_route.dart';
+import '../../../../global/helper/auth_guard.dart';
 
 class AllLiveShowsScreen extends StatelessWidget {
   const AllLiveShowsScreen({super.key});
@@ -73,7 +74,13 @@ class AllLiveShowsScreen extends StatelessWidget {
               return Padding(
                 padding: EdgeInsets.only(bottom: 20.h),
                 child: GestureDetector(
-                  onTap: () => Get.toNamed(AppRoute.viewerLive, arguments: show['raw']),
+                  onTap: () {
+                    AuthGuard.check(
+                      title: "Sign in to Watch Stream",
+                      message: "Guest mode is browse-only. Sign in or create an account to watch live streams.",
+                      onAuthorized: () => Get.toNamed(AppRoute.viewerLive, arguments: show['raw']),
+                    );
+                  },
                   child: _buildLiveCard(
                     show['title']!,
                     show['host']!,

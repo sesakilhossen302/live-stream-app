@@ -3,6 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../global/widgets/custom_background.dart';
+import '../../../../data/services/api_url.dart';
 
 class ShippingLabelViewerScreen extends StatelessWidget {
   const ShippingLabelViewerScreen({super.key});
@@ -567,12 +568,19 @@ class ShippingLabelViewerScreen extends StatelessWidget {
     );
   }
 
+  String _resolveLabelUrl(String url) {
+    if (url.isEmpty) return "";
+    if (url.startsWith('http')) return url;
+    return "${ApiUrl.imageBaseUrl}${url.startsWith('/') ? url : '/$url'}";
+  }
+
   // ──────────────────────────────────────────────────────────────────────────
   // ACTIONS: PRINT, DOWNLOAD, SHARE
   // ──────────────────────────────────────────────────────────────────────────
   Future<void> _printLabel(String url, String orderId) async {
-    if (url.isNotEmpty && url.startsWith('http')) {
-      final uri = Uri.parse(url);
+    final fullUrl = _resolveLabelUrl(url);
+    if (fullUrl.isNotEmpty && fullUrl.startsWith('http')) {
+      final uri = Uri.parse(fullUrl);
       if (await canLaunchUrl(uri)) {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
         return;
@@ -588,8 +596,9 @@ class ShippingLabelViewerScreen extends StatelessWidget {
   }
 
   Future<void> _downloadLabel(String url, String orderId) async {
-    if (url.isNotEmpty && url.startsWith('http')) {
-      final uri = Uri.parse(url);
+    final fullUrl = _resolveLabelUrl(url);
+    if (fullUrl.isNotEmpty && fullUrl.startsWith('http')) {
+      final uri = Uri.parse(fullUrl);
       if (await canLaunchUrl(uri)) {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
         return;

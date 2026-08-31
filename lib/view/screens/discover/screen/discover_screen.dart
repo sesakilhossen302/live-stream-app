@@ -7,6 +7,7 @@ import '../controller/discover_controller.dart';
 import '../../../../core/app_route.dart';
 import '../../../../data/services/api_url.dart';
 import '../../../../global/widgets/custom_shimmer.dart';
+import '../../../../global/helper/auth_guard.dart';
 
 class DiscoverScreen extends GetView<DiscoverController> {
   const DiscoverScreen({super.key});
@@ -138,7 +139,13 @@ class DiscoverScreen extends GetView<DiscoverController> {
                 return Padding(
                   padding: EdgeInsets.only(bottom: 20.h),
                   child: GestureDetector(
-                    onTap: () => Get.toNamed(AppRoute.viewerLive, arguments: show['raw']),
+                    onTap: () {
+                      AuthGuard.check(
+                        title: "Sign in to Watch Stream",
+                        message: "Guest mode is browse-only. Sign in or create an account to watch live streams.",
+                        onAuthorized: () => Get.toNamed(AppRoute.viewerLive, arguments: show['raw']),
+                      );
+                    },
                     child: _buildLiveCard(
                       show['title'] ?? 'Live Show',
                       show['host'] ?? 'Host',
@@ -323,7 +330,13 @@ class DiscoverScreen extends GetView<DiscoverController> {
               return Padding(
                 padding: EdgeInsets.only(bottom: 20.h),
                 child: GestureDetector(
-                  onTap: () => Get.toNamed(AppRoute.viewerLive, arguments: show['raw']),
+                  onTap: () {
+                    AuthGuard.check(
+                      title: "Sign in to Watch Stream",
+                      message: "Guest mode is browse-only. Sign in or create an account to watch live streams.",
+                      onAuthorized: () => Get.toNamed(AppRoute.viewerLive, arguments: show['raw']),
+                    );
+                  },
                   child: _buildLiveCard(show['title']!, show['host']!, show['viewers']!, show['image']!, show['hostAvatar'] ?? ''),
                 ),
               );

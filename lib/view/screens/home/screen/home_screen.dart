@@ -8,9 +8,11 @@ import '../../../../global/widgets/custom_background.dart';
 import '../../purchases/screen/purchases_screen.dart';
 import '../controller/home_controller.dart';
 import 'home_live_preview_widget.dart';
-import '../../../../data/services/api_url.dart';
 import '../../live_stream/controller/agora_live_controller.dart';
 import '../../../../global/widgets/custom_shimmer.dart';
+import '../../../../global/helper/auth_guard.dart';
+import '../../../../data/services/api_url.dart';
+
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
@@ -64,8 +66,14 @@ class HomeScreen extends StatelessWidget {
                   SizedBox(width: 12.w),
                   GestureDetector(
                     onTap: () async {
-                      await Get.toNamed(AppRoute.notifications);
-                      controller.fetchUnreadNotificationCount();
+                      AuthGuard.check(
+                        title: "Sign in for Notifications",
+                        message: "Guest mode is browse-only. Sign in to view your trade alerts and updates.",
+                        onAuthorized: () async {
+                          await Get.toNamed(AppRoute.notifications);
+                          controller.fetchUnreadNotificationCount();
+                        },
+                      );
                     },
                     child: Stack(
                       clipBehavior: Clip.none,
@@ -129,16 +137,22 @@ class HomeScreen extends StatelessWidget {
               // Go Live Button
               GestureDetector(
                 onTap: () {
-                  try {
-                    if (Get.isRegistered<AgoraLiveController>()) {
-                      final ctrl = Get.find<AgoraLiveController>();
-                      if (ctrl.isLive.value) {
-                        ctrl.resumeStream();
-                        return;
-                      }
-                    }
-                  } catch (_) {}
-                  Get.toNamed(AppRoute.goLiveSetup);
+                  AuthGuard.check(
+                    title: "Sign in to Go Live",
+                    message: "Guest mode is browse-only. Sign in or create an account to host streams and auction items.",
+                    onAuthorized: () {
+                      try {
+                        if (Get.isRegistered<AgoraLiveController>()) {
+                          final ctrl = Get.find<AgoraLiveController>();
+                          if (ctrl.isLive.value) {
+                            ctrl.resumeStream();
+                            return;
+                          }
+                        }
+                      } catch (_) {}
+                      Get.toNamed(AppRoute.goLiveSetup);
+                    },
+                  );
                 },
                 child: Container(
                   width: double.infinity,
@@ -391,11 +405,17 @@ class HomeScreen extends StatelessWidget {
 
                                      return ElevatedButton(
                                        onPressed: () {
-                                         if (isLiveActive && agoraCtrl != null) {
-                                           agoraCtrl.resumeStream();
-                                         } else if (liveShow.raw != null) {
-                                           Get.toNamed(AppRoute.viewerLive, arguments: liveShow.raw);
-                                         }
+                                         AuthGuard.check(
+                                           title: "Sign in to Watch Stream",
+                                           message: "Guest mode is browse-only. Sign in or create an account to watch live streams.",
+                                           onAuthorized: () {
+                                             if (isLiveActive && agoraCtrl != null) {
+                                               agoraCtrl.resumeStream();
+                                             } else if (liveShow.raw != null) {
+                                               Get.toNamed(AppRoute.viewerLive, arguments: liveShow.raw);
+                                             }
+                                           },
+                                         );
                                        },
                                        style: ElevatedButton.styleFrom(
                                          backgroundColor: isLiveActive ? const Color(0xFFFF4B4B) : const Color(0xFF8B9BFF),
@@ -599,21 +619,27 @@ class HomeScreen extends StatelessWidget {
   Widget _buildLiveCard(LiveItemModel item, int index) {
     return GestureDetector(
       onTap: () {
-        try {
-          if (Get.isRegistered<AgoraLiveController>()) {
-            final ctrl = Get.find<AgoraLiveController>();
-            final String sId = item.raw?['_id']?.toString() ?? '';
-            if (ctrl.isLive.value && (ctrl.streamId.value == sId || (ctrl.isHost.value && ctrl.isLive.value))) {
-              ctrl.resumeStream();
-              return;
+        AuthGuard.check(
+          title: "Sign in to Watch Stream",
+          message: "Guest mode is browse-only. Sign in or create an account to watch live streams.",
+          onAuthorized: () {
+            try {
+              if (Get.isRegistered<AgoraLiveController>()) {
+                final ctrl = Get.find<AgoraLiveController>();
+                final String sId = item.raw?['_id']?.toString() ?? '';
+                if (ctrl.isLive.value && (ctrl.streamId.value == sId || (ctrl.isHost.value && ctrl.isLive.value))) {
+                  ctrl.resumeStream();
+                  return;
+                }
+              }
+            } catch (_) {}
+            if (item.raw != null) {
+              Get.toNamed(AppRoute.viewerLive, arguments: item.raw);
+            } else {
+              Get.snackbar("Cannot Join", "Stream data is not available.", snackPosition: SnackPosition.BOTTOM);
             }
-          }
-        } catch (_) {}
-        if (item.raw != null) {
-          Get.toNamed(AppRoute.viewerLive, arguments: item.raw);
-        } else {
-          Get.snackbar("Cannot Join", "Stream data is not available.", snackPosition: SnackPosition.BOTTOM);
-        }
+          },
+        );
       },
       child: Container(
         decoration: BoxDecoration(

@@ -9,6 +9,7 @@ import '../../../../data/services/api_url.dart';
 import '../controller/agora_live_controller.dart';
 import '../../../../core/app_route.dart';
 import '../../../../data/helpers/shared_prefe.dart';
+import '../../../../global/helper/auth_guard.dart';
 import 'dart:convert';
 
 class ViewerLiveScreen extends StatefulWidget {
@@ -29,6 +30,15 @@ class _ViewerLiveScreenState extends State<ViewerLiveScreen> {
     super.initState();
     ctrl = Get.put(AgoraLiveController(), permanent: true);
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (SharePrefsHelper.isGuest || SharePrefsHelper.getString(SharePrefsHelper.accessTokenKey).isEmpty) {
+        Get.back();
+        AuthGuard.showAuthPrompt(
+          title: "Sign in to Watch Stream",
+          message: "Guest mode is browse-only. Sign in or create an account to watch live streams and participate.",
+        );
+        return;
+      }
+
       final currentUserId = SharePrefsHelper.getString(SharePrefsHelper.userIdKey);
       final seller = widget.streamData['sellerId'] ?? widget.streamData['seller'] ?? widget.streamData['hostId'] ?? widget.streamData['user'] ?? widget.streamData['host'];
       final sId = (seller is Map) ? (seller['_id'] ?? seller['id'] ?? '') : (seller?.toString() ?? '');

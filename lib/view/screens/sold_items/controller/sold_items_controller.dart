@@ -173,6 +173,7 @@ class SoldItemsController extends GetxController {
               buyerId: bId,
               shippingAddress: shipAddr,
               rawOrderId: id,
+              shippingLabelUrl: item['shippingLabelUrl']?.toString(),
             );
 
             seenIds.add(id);

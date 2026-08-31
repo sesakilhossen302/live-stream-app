@@ -27,6 +27,7 @@ class PurchaseModel {
   final String? buyerId;
   final Map<String, dynamic>? shippingAddress;
   final String? rawOrderId;
+  final String? shippingLabelUrl;
 
   PurchaseModel({
     required this.id,
@@ -52,5 +53,6 @@ class PurchaseModel {
     this.buyerId,
     this.shippingAddress,
     this.rawOrderId,
+    this.shippingLabelUrl,
   });
 }

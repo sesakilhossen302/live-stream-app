@@ -8,6 +8,7 @@ import '../controller/trade_details_controller.dart';
 import '../../discover/controller/discover_controller.dart';
 import '../../../../data/services/api_url.dart';
 import '../../../../data/helpers/shared_prefe.dart';
+import '../../../../global/helper/auth_guard.dart';
 
 class TradeDetailsScreen extends GetView<TradeDetailsController> {
   const TradeDetailsScreen({super.key});
@@ -263,7 +264,13 @@ class TradeDetailsScreen extends GetView<TradeDetailsController> {
                       if (allowsOffers || hasTrade)
                         Expanded(
                           child: GestureDetector(
-                            onTap: () => _showMakeOfferBottomSheet(context, product, controller),
+                            onTap: () {
+                              AuthGuard.check(
+                                title: "Sign in to Make an Offer",
+                                message: "Guest mode is browse-only. Sign in or create an account to make trade offers.",
+                                onAuthorized: () => _showMakeOfferBottomSheet(context, product, controller),
+                              );
+                            },
                             child: Container(
                               height: 56.h,
                               decoration: BoxDecoration(

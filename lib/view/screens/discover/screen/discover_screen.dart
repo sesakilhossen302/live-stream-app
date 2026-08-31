@@ -139,6 +139,7 @@ class DiscoverScreen extends GetView<DiscoverController> {
                 return Padding(
                   padding: EdgeInsets.only(bottom: 20.h),
                   child: GestureDetector(
+<<<<<<< HEAD
                     onTap: () {
                       AuthGuard.check(
                         title: "Sign in to Watch Stream",
@@ -146,6 +147,9 @@ class DiscoverScreen extends GetView<DiscoverController> {
                         onAuthorized: () => Get.toNamed(AppRoute.viewerLive, arguments: show['raw']),
                       );
                     },
+=======
+                    onTap: () => Get.toNamed(AppRoute.viewerLive, arguments: show['raw']),
+>>>>>>> de8e507e15ad8ce63f8a30024ad690138cb76a0b
                     child: _buildLiveCard(
                       show['title'] ?? 'Live Show',
                       show['host'] ?? 'Host',

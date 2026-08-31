@@ -66,6 +66,7 @@ class HomeScreen extends StatelessWidget {
                   SizedBox(width: 12.w),
                   GestureDetector(
                     onTap: () async {
+<<<<<<< HEAD
                       AuthGuard.check(
                         title: "Sign in for Notifications",
                         message: "Guest mode is browse-only. Sign in to view your trade alerts and updates.",
@@ -74,6 +75,10 @@ class HomeScreen extends StatelessWidget {
                           controller.fetchUnreadNotificationCount();
                         },
                       );
+=======
+                      await Get.toNamed(AppRoute.notifications);
+                      controller.fetchUnreadNotificationCount();
+>>>>>>> de8e507e15ad8ce63f8a30024ad690138cb76a0b
                     },
                     child: Stack(
                       clipBehavior: Clip.none,

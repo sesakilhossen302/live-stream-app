@@ -10,6 +10,7 @@ import '../controller/agora_live_controller.dart';
 import '../../../../core/app_route.dart';
 import '../../../../data/helpers/shared_prefe.dart';
 import '../../../../global/helper/auth_guard.dart';
+import '../../../../global/controllers/safety_controller.dart';
 import 'dart:convert';
 
 class ViewerLiveScreen extends StatefulWidget {
@@ -192,6 +193,24 @@ class _ViewerLiveScreenState extends State<ViewerLiveScreen> {
                                   padding: EdgeInsets.all(7.r),
                                   decoration: const BoxDecoration(color: Colors.black38, shape: BoxShape.circle),
                                   child: Icon(Icons.close_rounded, color: Colors.white, size: 20.sp),
+                                ),
+                              ),
+                              SizedBox(width: 8.w),
+                              GestureDetector(
+                                onTap: () {
+                                  final streamId = (widget.streamData['_id'] ?? widget.streamData['id'] ?? widget.streamData['streamId'] ?? '').toString();
+                                  final title = (widget.streamData['title'] ?? 'Live Stream').toString();
+                                  SafetyController.showReportDialog(
+                                    context,
+                                    contentType: 'stream',
+                                    reportedStream: streamId,
+                                    targetName: title,
+                                  );
+                                },
+                                child: Container(
+                                  padding: EdgeInsets.all(7.r),
+                                  decoration: const BoxDecoration(color: Colors.black38, shape: BoxShape.circle),
+                                  child: Icon(Icons.flag_outlined, color: Colors.white70, size: 20.sp),
                                 ),
                               ),
                             ],

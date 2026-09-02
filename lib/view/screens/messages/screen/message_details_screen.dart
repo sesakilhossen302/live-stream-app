@@ -7,6 +7,7 @@ import '../../../../global/widgets/custom_background.dart';
 import '../../purchases/model/purchase_model.dart';
 import '../controller/message_details_controller.dart';
 import '../../../../data/services/api_url.dart';
+import '../../../../global/controllers/safety_controller.dart';
 
 class MessageDetailsScreen extends GetView<MessageDetailsController> {
   const MessageDetailsScreen({super.key});
@@ -38,7 +39,7 @@ class MessageDetailsScreen extends GetView<MessageDetailsController> {
       safeAreaBottom: false,
       child: Scaffold(
         backgroundColor: Colors.transparent,
-        appBar: _buildAppBar(),
+        appBar: _buildAppBar(context),
         body: Column(
           children: [
             // Pinned Item — only when chat has an associated order
@@ -173,7 +174,7 @@ class MessageDetailsScreen extends GetView<MessageDetailsController> {
     );
   }
 
-  PreferredSizeWidget _buildAppBar() {
+  PreferredSizeWidget _buildAppBar(BuildContext context) {
     return AppBar(
       backgroundColor: Colors.transparent,
       elevation: 0,
@@ -255,6 +256,54 @@ class MessageDetailsScreen extends GetView<MessageDetailsController> {
           ),
         );
       }),
+      actions: [
+        PopupMenuButton<String>(
+          icon: Icon(Icons.more_vert_rounded, color: Colors.white, size: 24.sp),
+          color: const Color(0xFF1E1E2C),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
+          onSelected: (value) {
+            final partnerId = controller.partnerId.value;
+            final partnerName = controller.partnerName.value;
+            if (value == 'report') {
+              SafetyController.showReportDialog(
+                context,
+                contentType: 'user',
+                reportedUser: partnerId,
+                targetName: partnerName,
+              );
+            } else if (value == 'block') {
+              SafetyController.showBlockUserDialog(
+                context,
+                userId: partnerId,
+                userName: partnerName,
+                onBlocked: () => Get.back(),
+              );
+            }
+          },
+          itemBuilder: (context) => [
+            PopupMenuItem(
+              value: 'report',
+              child: Row(
+                children: [
+                  Icon(Icons.flag_outlined, color: const Color(0xFFFF4B4B), size: 18.sp),
+                  SizedBox(width: 12.w),
+                  Text("Report User", style: TextStyle(color: Colors.white, fontSize: 13.sp, fontWeight: FontWeight.w700)),
+                ],
+              ),
+            ),
+            PopupMenuItem(
+              value: 'block',
+              child: Row(
+                children: [
+                  Icon(Icons.block_rounded, color: const Color(0xFFFF4B4B), size: 18.sp),
+                  SizedBox(width: 12.w),
+                  Text("Block User", style: TextStyle(color: const Color(0xFFFF4B4B), fontSize: 13.sp, fontWeight: FontWeight.w700)),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 

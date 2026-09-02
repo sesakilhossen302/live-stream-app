@@ -34,6 +34,8 @@ import '../view/screens/sold_items/screen/sold_items_screen.dart';
 import '../view/screens/spin_wheel/screen/spin_wheel_screen.dart';
 import '../view/screens/checkout/screen/order_checkout_screen.dart';
 
+import '../view/screens/profile/screen/blocked_users_screen.dart';
+
 class AppRoute {
   static final routeStream = StreamController<String>.broadcast();
   static const String checkout = "/checkout";
@@ -61,6 +63,7 @@ class AppRoute {
   static const String profileInformation = "/profile_information";
   static const String changePassword = "/change_password";
   static const String userPreferences = "/user_preferences";
+  static const String blockedUsers = "/blocked_users";
   static const String terms = "/terms";
   static const String notifications = "/notifications";
   static const String newOffer = "/new_offer";
@@ -103,6 +106,7 @@ class AppRoute {
     ),
     GetPage(name: changePassword, page: () => const ChangePasswordScreen()),
     GetPage(name: userPreferences, page: () => const UserPreferencesScreen()),
+    GetPage(name: blockedUsers, page: () => const BlockedUsersScreen()),
     GetPage(name: terms, page: () => const TermsConditionsScreen()),
     GetPage(name: notifications, page: () => const NotificationsScreen()),
     GetPage(name: newOffer, page: () => const TradeOfferScreen()),

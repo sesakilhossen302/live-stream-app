@@ -274,6 +274,47 @@ class ApiClient {
     }
   }
 
+  // DELETE Request
+  Future<http.Response> deleteData(
+    String uri, {
+    dynamic body,
+    Map<String, String>? headers,
+  }) async {
+    final url = Uri.parse('$baseUrl$uri');
+    final Map<String, String> requestHeaders = headers ?? getHeader();
+    final String? requestBody = body != null
+        ? (body is Map || body is List ? jsonEncode(body) : body.toString())
+        : null;
+
+    _logRequest('DELETE', url, requestHeaders, body: body);
+
+    final startTime = DateTime.now();
+    try {
+      final request = http.Request('DELETE', url);
+      request.headers.addAll(requestHeaders);
+      if (requestBody != null) {
+        request.body = requestBody;
+      }
+
+      final streamedResponse = await request.send().timeout(
+        const Duration(seconds: 30),
+      );
+      final response = await http.Response.fromStream(
+        streamedResponse,
+      ).timeout(const Duration(seconds: 30));
+
+      _logResponse('DELETE', url, response, startTime);
+      return await _checkAndRefreshToken(
+        uri,
+        response,
+        () => deleteData(uri, body: body, headers: headers),
+      );
+    } catch (e) {
+      _logError('DELETE', url, e, startTime);
+      rethrow;
+    }
+  }
+
   // GET Request
   Future<http.Response> getData(
     String uri, {

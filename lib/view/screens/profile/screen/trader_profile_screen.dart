@@ -8,6 +8,7 @@ import '../../messages/controller/messages_controller.dart';
 import '../controller/trader_profile_controller.dart';
 import '../../../../data/services/api_url.dart';
 import '../../../../global/widgets/custom_shimmer.dart';
+import '../../../../global/controllers/safety_controller.dart';
 
 class TraderProfileScreen extends GetView<TraderProfileController> {
   const TraderProfileScreen({super.key});
@@ -18,7 +19,7 @@ class TraderProfileScreen extends GetView<TraderProfileController> {
     return CustomBackground(
       child: Scaffold(
         backgroundColor: Colors.transparent,
-        appBar: _buildAppBar(),
+        appBar: _buildAppBar(context),
         body: RefreshIndicator(
           color: const Color(0xFF8B9BFF),
           backgroundColor: const Color(0xFF161622),
@@ -52,7 +53,7 @@ class TraderProfileScreen extends GetView<TraderProfileController> {
 
   // ─── APP BAR ────────────────────────────────────────────────────────────────
 
-  AppBar _buildAppBar() {
+  AppBar _buildAppBar(BuildContext context) {
     return AppBar(
       backgroundColor: Colors.transparent,
       elevation: 0,
@@ -72,6 +73,50 @@ class TraderProfileScreen extends GetView<TraderProfileController> {
         IconButton(
           icon: Icon(Icons.share_outlined, color: Colors.white, size: 22.sp),
           onPressed: () {},
+        ),
+        PopupMenuButton<String>(
+          icon: Icon(Icons.more_vert_rounded, color: Colors.white, size: 24.sp),
+          color: const Color(0xFF1E1E2C),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
+          onSelected: (value) {
+            if (value == 'report') {
+              SafetyController.showReportDialog(
+                context,
+                contentType: 'user',
+                reportedUser: controller.traderId.value,
+                targetName: controller.displayName,
+              );
+            } else if (value == 'block') {
+              SafetyController.showBlockUserDialog(
+                context,
+                userId: controller.traderId.value,
+                userName: controller.displayName,
+                onBlocked: () => Get.back(),
+              );
+            }
+          },
+          itemBuilder: (context) => [
+            PopupMenuItem(
+              value: 'report',
+              child: Row(
+                children: [
+                  Icon(Icons.flag_outlined, color: const Color(0xFFFF4B4B), size: 18.sp),
+                  SizedBox(width: 12.w),
+                  Text("Report User", style: TextStyle(color: Colors.white, fontSize: 13.sp, fontWeight: FontWeight.w700)),
+                ],
+              ),
+            ),
+            PopupMenuItem(
+              value: 'block',
+              child: Row(
+                children: [
+                  Icon(Icons.block_rounded, color: const Color(0xFFFF4B4B), size: 18.sp),
+                  SizedBox(width: 12.w),
+                  Text("Block User", style: TextStyle(color: const Color(0xFFFF4B4B), fontSize: 13.sp, fontWeight: FontWeight.w700)),
+                ],
+              ),
+            ),
+          ],
         ),
       ],
     );

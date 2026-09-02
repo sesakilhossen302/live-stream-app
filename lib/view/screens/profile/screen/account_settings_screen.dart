@@ -7,6 +7,7 @@ import '../../../../data/services/push_notification_service.dart';
 import '../../../../global/widgets/custom_background.dart';
 import '../controller/profile_controller.dart';
 import '../controller/profile_information_controller.dart';
+import '../../../../global/controllers/safety_controller.dart';
 
 class AccountSettingsScreen extends StatelessWidget {
   const AccountSettingsScreen({super.key});
@@ -192,6 +193,14 @@ class AccountSettingsScreen extends StatelessWidget {
                       ),
                       Divider(color: Colors.white.withOpacity(0.05), height: 1),
                       _buildSettingsTile(
+                        icon: Icons.block_rounded,
+                        title: "Blocked Users",
+                        subtitle: "Manage accounts you have blocked",
+                        showArrow: true,
+                        onTap: () => Get.toNamed(AppRoute.blockedUsers),
+                      ),
+                      Divider(color: Colors.white.withOpacity(0.05), height: 1),
+                      _buildSettingsTile(
                         icon: Icons.visibility_outlined,
                         title: "Public Profile",
                         subtitle: "Visible to other bidders",
@@ -208,7 +217,29 @@ class AccountSettingsScreen extends StatelessWidget {
                   ),
                 ),
 
-                SizedBox(height: 48.h),
+                SizedBox(height: 32.h),
+
+                // Account Safety & Danger Zone Section
+                _buildSectionTitle("ACCOUNT SAFETY"),
+                Container(
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF11111E),
+                    borderRadius: BorderRadius.circular(24.r),
+                  ),
+                  child: Column(
+                    children: [
+                      _buildSettingsTile(
+                        icon: Icons.delete_outline_rounded,
+                        title: "Delete Account",
+                        subtitle: "Permanently remove your account and data",
+                        showArrow: true,
+                        onTap: () => SafetyController.showDeleteAccountDialog(context),
+                      ),
+                    ],
+                  ),
+                ),
+
+                SizedBox(height: 40.h),
 
                 // Sign Out Button
                 GestureDetector(

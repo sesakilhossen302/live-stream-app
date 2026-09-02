@@ -24,11 +24,18 @@ class ApiUrl {
   static const String resetPassword = "/auth/reset-password";
   static const String updateProfile = "/users/profile";
   static const String resendOtp = "/auth/resend-otp";
+  static const String deleteAccount = "/auth/delete-account";
 
   // User
   static const String profile = "/users/profile";
   static const String users = "/users";
   static const String switchRole = "/users/switch-role";
+  static String blockUser(String userId) => "/users/block/$userId";
+  static String unblockUser(String userId) => "/users/unblock/$userId";
+  static const String blockedList = "/users/blocked-list";
+
+  // Support / Report
+  static const String support = "/support";
 
   // Products
   static const String products = "/products";

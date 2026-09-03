@@ -73,7 +73,6 @@
 		<string>audio</string>
 		<string>remote-notification</string>
 		<string>fetch</string>
-		<string>voip</string>
 	</array>
 
 	<!-- File & PDF Handling for Shipping Labels -->

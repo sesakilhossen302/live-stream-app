@@ -32,7 +32,7 @@ class DefaultFirebaseOptions {
 
   static FirebaseOptions get android => FirebaseOptions(
         apiKey: (dotenv.isInitialized ? dotenv.env['FIREBASE_ANDROID_API_KEY'] : null) ??
-            'AIzaSyDummyKeyForLiveStreamApp',
+            'AIzaSyDummyKeyForLiveStreamApp123456789',
         appId: (dotenv.isInitialized ? dotenv.env['FIREBASE_ANDROID_APP_ID'] : null) ??
             '1:123456789012:android:abcdef1234567890',
         messagingSenderId: (dotenv.isInitialized ? dotenv.env['FIREBASE_MESSAGING_SENDER_ID'] : null) ??
@@ -45,7 +45,7 @@ class DefaultFirebaseOptions {
 
   static FirebaseOptions get ios => FirebaseOptions(
         apiKey: (dotenv.isInitialized ? dotenv.env['FIREBASE_IOS_API_KEY'] : null) ??
-            'AIzaSyDummyKeyForLiveStreamApp',
+            'AIzaSyDummyKeyForLiveStreamApp123456789',
         appId: (dotenv.isInitialized ? dotenv.env['FIREBASE_IOS_APP_ID'] : null) ??
             '1:123456789012:ios:abcdef1234567890',
         messagingSenderId: (dotenv.isInitialized ? dotenv.env['FIREBASE_MESSAGING_SENDER_ID'] : null) ??
@@ -54,11 +54,11 @@ class DefaultFirebaseOptions {
             'culturecards-live-stream',
         storageBucket: (dotenv.isInitialized ? dotenv.env['FIREBASE_STORAGE_BUCKET'] : null) ??
             'culturecards-live-stream.appspot.com',
-        iosBundleId: 'com.vibelive.app',
+        iosBundleId: 'com.culturecards.app',
       );
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyDummyKeyForLiveStreamApp',
+    apiKey: 'AIzaSyDummyKeyForLiveStreamApp123456789',
     appId: '1:123456789012:web:abcdef1234567890',
     messagingSenderId: '123456789012',
     projectId: 'culturecards-live-stream',

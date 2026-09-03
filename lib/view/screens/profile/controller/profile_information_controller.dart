@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
+import '../../../../data/helpers/image_helper.dart';
 import '../../../../data/services/api_client.dart';
 import '../../../../data/services/api_url.dart';
 import 'profile_controller.dart';
@@ -74,9 +75,16 @@ class ProfileInformationController extends GetxController {
 
   Future<void> pickImage(ImageSource source) async {
     try {
-      final XFile? image = await _picker.pickImage(source: source);
+      final XFile? image = await _picker.pickImage(
+        source: source,
+        maxWidth: 1920,
+        maxHeight: 1920,
+        imageQuality: 85,
+        requestFullMetadata: false,
+      );
       if (image != null) {
-        selectedImage.value = File(image.path);
+        final fixed = await ImageHelper.fixOrientation(File(image.path));
+        selectedImage.value = fixed;
       }
     } catch (e) {
       Get.snackbar(

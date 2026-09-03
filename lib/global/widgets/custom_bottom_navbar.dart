@@ -102,10 +102,36 @@ class CustomBottomNavbar extends StatelessWidget {
 
       return GestureDetector(
         onTap: () {
-          controller.changeIndex(index);
-          // If we are in a detail screen, go back to main first
-          if (Get.currentRoute != "/main") {
-            Get.until((route) => Get.currentRoute == "/main");
+          if (index == 1) {
+            final allowed = AuthGuard.check(
+              title: "Sign in to access Messages",
+              message: "Guest mode is browse-only. Sign in or create an account to message other traders and view offers.",
+              onAuthorized: () {
+                controller.changeIndex(index);
+                if (Get.currentRoute != "/main") {
+                  Get.until((route) => Get.currentRoute == "/main");
+                }
+              },
+            );
+            if (!allowed) return;
+          } else if (index == 4) {
+            final allowed = AuthGuard.check(
+              title: "Sign in to view your Profile",
+              message: "Sign in or create an account to view your trade history, manage listings, and update profile settings.",
+              onAuthorized: () {
+                controller.changeIndex(index);
+                if (Get.currentRoute != "/main") {
+                  Get.until((route) => Get.currentRoute == "/main");
+                }
+              },
+            );
+            if (!allowed) return;
+          } else {
+            controller.changeIndex(index);
+            // If we are in a detail screen, go back to main first
+            if (Get.currentRoute != "/main") {
+              Get.until((route) => Get.currentRoute == "/main");
+            }
           }
         },
         child: AnimatedContainer(

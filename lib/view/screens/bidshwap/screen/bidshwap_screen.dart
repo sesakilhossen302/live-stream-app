@@ -10,6 +10,7 @@ import '../../profile/controller/profile_controller.dart';
 import '../controller/bidshwap_controller.dart';
 import '../model/trade_model.dart';
 import '../../../../data/services/api_url.dart';
+import '../../../../global/helper/auth_guard.dart';
 
 class BidShwapScreen extends GetView<BidShwapController> {
   const BidShwapScreen({super.key});
@@ -47,7 +48,13 @@ class BidShwapScreen extends GetView<BidShwapController> {
                     style: TextStyle(color: Colors.white, fontSize: 18.sp, fontWeight: FontWeight.bold),
                   ),
                   GestureDetector(
-                    onTap: () => Get.toNamed(AppRoute.notifications),
+                    onTap: () {
+                      AuthGuard.check(
+                        title: "Sign in to view Notifications",
+                        message: "Guest mode is browse-only. Sign in to view your activity and notifications.",
+                        onAuthorized: () => Get.toNamed(AppRoute.notifications),
+                      );
+                    },
                     child: Icon(Icons.notifications_none_rounded, color: Colors.white, size: 26.sp),
                   ),
                 ],
@@ -402,7 +409,13 @@ class BidShwapScreen extends GetView<BidShwapController> {
                     "Make Offer",
                     const Color(0xFF8B9BFF),
                     Colors.black,
-                    onTap: () => Get.toNamed('/make_offer', arguments: trade.rawProduct),
+                    onTap: () {
+                      AuthGuard.check(
+                        title: "Sign in to Make an Offer",
+                        message: "Guest mode is browse-only. Sign in or create an account to make custom trade offers.",
+                        onAuthorized: () => Get.toNamed('/make_offer', arguments: trade.rawProduct),
+                      );
+                    },
                   ),
                 ),
               ],

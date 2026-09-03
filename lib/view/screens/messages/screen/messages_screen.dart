@@ -61,12 +61,11 @@ class MessagesScreen extends GetView<MessagesController> {
                         
                         SizedBox(height: 32.h),
                         
-                        Obx(() {
-                          if (SharePrefsHelper.isGuest || SharePrefsHelper.getString(SharePrefsHelper.accessTokenKey).isEmpty) {
-                            return _buildGuestMessagesView();
-                          }
-
-                          if (controller.isLoading.value) {
+                        if (SharePrefsHelper.isGuest || SharePrefsHelper.getString(SharePrefsHelper.accessTokenKey).isEmpty)
+                          _buildGuestMessagesView()
+                        else
+                          Obx(() {
+                            if (controller.isLoading.value) {
                             return Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [

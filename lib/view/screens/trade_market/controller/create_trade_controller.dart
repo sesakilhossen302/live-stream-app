@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
+import '../../../../data/helpers/image_helper.dart';
 import '../../../../data/helpers/shared_prefe.dart';
 import '../../../../data/services/api_client.dart';
 import '../../../../data/services/api_url.dart';
@@ -51,9 +52,17 @@ class CreateTradeController extends GetxController {
 
   Future<void> pickImages() async {
     try {
-      final List<XFile> images = await _picker.pickMultiImage();
+      final List<XFile> images = await _picker.pickMultiImage(
+        maxWidth: 1920,
+        maxHeight: 1920,
+        imageQuality: 85,
+        requestFullMetadata: false,
+      );
       if (images.isNotEmpty) {
-        selectedImages.addAll(images.map((img) => File(img.path)));
+        for (final img in images) {
+          final fixed = await ImageHelper.fixOrientation(File(img.path));
+          selectedImages.add(fixed);
+        }
         selectedImageIndex.value = selectedImages.length - 1; // set preview to last selected
       }
     } catch (e) {

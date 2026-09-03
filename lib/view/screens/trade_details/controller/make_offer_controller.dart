@@ -5,6 +5,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 import 'package:get/get.dart';
+import '../../../../data/helpers/image_helper.dart';
 import '../../../../data/helpers/shared_prefe.dart';
 import '../../../../data/services/api_client.dart';
 import '../../../../data/services/api_url.dart';
@@ -112,9 +113,16 @@ class MakeOfferController extends GetxController {
 
   Future<void> pickCustomImage() async {
     try {
-      final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
+      final XFile? image = await _picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1920,
+        maxHeight: 1920,
+        imageQuality: 85,
+        requestFullMetadata: false,
+      );
       if (image != null) {
-        customImageFile.value = File(image.path);
+        final fixed = await ImageHelper.fixOrientation(File(image.path));
+        customImageFile.value = fixed;
       }
     } catch (e) {
       Get.snackbar("Error", "Failed to pick image");

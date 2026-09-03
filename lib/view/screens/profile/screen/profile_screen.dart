@@ -50,12 +50,10 @@ class ProfileScreen extends GetView<ProfileController> {
                   physics: const AlwaysScrollableScrollPhysics(
                     parent: BouncingScrollPhysics(),
                   ),
-                  child: Obx(() {
-                    if (SharePrefsHelper.isGuest || SharePrefsHelper.getString(SharePrefsHelper.accessTokenKey).isEmpty) {
-                      return _buildGuestProfileView();
-                    }
-
-                    if (controller.hasError.value && controller.name.value.isEmpty) {
+                  child: (SharePrefsHelper.isGuest || SharePrefsHelper.getString(SharePrefsHelper.accessTokenKey).isEmpty)
+                      ? _buildGuestProfileView()
+                      : Obx(() {
+                          if (controller.hasError.value && controller.name.value.isEmpty) {
                       return Padding(
                         padding: EdgeInsets.only(top: 80.h),
                         child: CustomEmptyState(

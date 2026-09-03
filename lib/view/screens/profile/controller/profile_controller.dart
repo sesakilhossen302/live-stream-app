@@ -1,8 +1,10 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../../core/app_route.dart';
+import '../../../../data/helpers/image_helper.dart';
 import '../../../../data/helpers/shared_prefe.dart';
 import '../../../../data/services/api_client.dart';
 import '../../../../data/services/api_url.dart';
@@ -250,14 +252,23 @@ class ProfileController extends GetxController {
 
   Future<void> updateImage(ImageSource source, {required bool isCover}) async {
     try {
-      final XFile? image = await _picker.pickImage(source: source);
+      final XFile? image = await _picker.pickImage(
+        source: source,
+        maxWidth: 1920,
+        maxHeight: 1920,
+        imageQuality: 85,
+        requestFullMetadata: false,
+      );
       if (image != null) {
         isLoading.value = true;
+
+        final File originalFile = File(image.path);
+        final File fixedFile = await ImageHelper.fixOrientation(originalFile);
 
         final response = await _apiClient.patchMultipart(
           ApiUrl.profile,
           {}, // No text fields for just image update
-          filePath: image.path,
+          filePath: fixedFile.path,
           fieldName: isCover ? 'coverPhoto' : 'images',
         );
 

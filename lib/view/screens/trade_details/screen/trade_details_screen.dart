@@ -9,6 +9,7 @@ import '../../discover/controller/discover_controller.dart';
 import '../../../../data/services/api_url.dart';
 import '../../../../data/helpers/shared_prefe.dart';
 import '../../../../global/helper/auth_guard.dart';
+import '../../../../global/helper/share_helper.dart';
 
 class TradeDetailsScreen extends GetView<TradeDetailsController> {
   const TradeDetailsScreen({super.key});
@@ -37,7 +38,18 @@ class TradeDetailsScreen extends GetView<TradeDetailsController> {
           actions: [
             IconButton(
               icon: const Icon(Icons.share_outlined, color: Colors.white),
-              onPressed: () {},
+              onPressed: () {
+                final product = detailsController.product;
+                final title = (product['title'] ?? product['name'] ?? 'Collectible Item').toString();
+                final priceVal = product['buyNowPrice'] ?? product['price'] ?? product['estValue'] ?? '0';
+                final pId = (product['_id'] ?? product['id'] ?? detailsController.productId.value).toString();
+                ShareHelper.shareTrade(
+                  context: context,
+                  title: title,
+                  priceOrValue: "\$$priceVal",
+                  productId: pId,
+                );
+              },
             ),
           ],
         ),

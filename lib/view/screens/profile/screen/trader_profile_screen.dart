@@ -9,6 +9,7 @@ import '../controller/trader_profile_controller.dart';
 import '../../../../data/services/api_url.dart';
 import '../../../../global/widgets/custom_shimmer.dart';
 import '../../../../global/controllers/safety_controller.dart';
+import '../../../../global/helper/share_helper.dart';
 
 class TraderProfileScreen extends GetView<TraderProfileController> {
   const TraderProfileScreen({super.key});
@@ -72,7 +73,14 @@ class TraderProfileScreen extends GetView<TraderProfileController> {
       actions: [
         IconButton(
           icon: Icon(Icons.share_outlined, color: Colors.white, size: 22.sp),
-          onPressed: () {},
+          onPressed: () {
+            ShareHelper.shareProfile(
+              context: context,
+              username: controller.displayName,
+              traderId: controller.traderId.value,
+              rating: controller.rating.value > 0 ? controller.rating.value.toStringAsFixed(1) : null,
+            );
+          },
         ),
         PopupMenuButton<String>(
           icon: Icon(Icons.more_vert_rounded, color: Colors.white, size: 24.sp),

@@ -42,7 +42,7 @@ class TradeDetailsScreen extends GetView<TradeDetailsController> {
                 final product = detailsController.product;
                 final title = (product['title'] ?? product['name'] ?? 'Collectible Item').toString();
                 final priceVal = product['buyNowPrice'] ?? product['price'] ?? product['estValue'] ?? '0';
-                final pId = (product['_id'] ?? product['id'] ?? detailsController.productId.value).toString();
+                final pId = (product['_id'] ?? product['id'] ?? detailsController.productId).toString();
                 ShareHelper.shareTrade(
                   context: context,
                   title: title,

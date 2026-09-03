@@ -53,6 +53,37 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+
+            <!-- Deep Linking (Custom Scheme: culturecards://) -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="culturecards" />
+            </intent-filter>
+
+            <!-- Android App Links (HTTPS Universal Links) -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="https"
+                    android:host="culturecards.app"
+                    android:pathPrefix="/trade" />
+                <data
+                    android:scheme="https"
+                    android:host="culturecards.app"
+                    android:pathPrefix="/profile" />
+                <data
+                    android:scheme="https"
+                    android:host="mohosin5001.binarybards.online"
+                    android:pathPrefix="/trade" />
+                <data
+                    android:scheme="https"
+                    android:host="mohosin5001.binarybards.online"
+                    android:pathPrefix="/profile" />
+            </intent-filter>
         </activity>
 
         <!-- Live Stream Foreground Service -->

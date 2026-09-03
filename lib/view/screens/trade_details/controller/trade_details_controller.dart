@@ -20,6 +20,8 @@ class TradeDetailsController extends GetxController {
   final RxBool isOrdering = false.obs;
   final RxBool isSubmittingOffer = false.obs;
 
+  String get productId => (product['_id'] ?? product['id'] ?? '').toString();
+
   @override
   void onInit() {
     super.onInit();

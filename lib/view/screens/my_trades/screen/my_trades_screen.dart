@@ -671,7 +671,7 @@ class MyTradesScreen extends GetView<MyTradesController> {
                 children: [
                   Icon(Icons.shield_outlined, color: const Color(0xFF22C55E), size: 16.sp),
                   SizedBox(width: 6.w),
-                  Text("Protected by Culture Cards Swap Guarantee", style: TextStyle(color: Colors.white38, fontSize: 11.sp, fontWeight: FontWeight.w600)),
+                  Text("Protected by AREIS Swap Guarantee", style: TextStyle(color: Colors.white38, fontSize: 11.sp, fontWeight: FontWeight.w600)),
                 ],
               ),
               SizedBox(height: 24.h),

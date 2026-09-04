@@ -414,7 +414,7 @@ class MyTradesController extends GetxController {
                     paymentIntentClientSecret: clientSecret,
                     customerEphemeralKeySecret: ephemeralKey.isNotEmpty ? ephemeralKey : null,
                     customerId: customerId.isNotEmpty ? customerId : null,
-                    merchantDisplayName: 'Culture Cards LLC',
+                    merchantDisplayName: 'AREIS LLC',
                     style: ThemeMode.dark,
                     appearance: const PaymentSheetAppearance(
                       colors: PaymentSheetAppearanceColors(

@@ -1,6 +1,6 @@
 {
-    "name": "live_stream_app",
-    "short_name": "live_stream_app",
+    "name": "AREIS",
+    "short_name": "AREIS",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

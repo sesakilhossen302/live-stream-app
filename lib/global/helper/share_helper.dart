@@ -14,7 +14,7 @@ class ShareHelper {
     String? imageUrl,
   }) {
     final String shareUrl = "https://culturecards.app/trade/$productId";
-    final String shareMessage = "Check out '$title' listed on Culture Cards for $priceOrValue! 🃏✨\nView deal: $shareUrl";
+    final String shareMessage = "Check out '$title' listed on AREIS for $priceOrValue! ✨\nView deal: $shareUrl";
 
     _showShareBottomSheet(
       context: context,
@@ -23,7 +23,7 @@ class ShareHelper {
       itemSubtitle: priceOrValue,
       shareUrl: shareUrl,
       shareMessage: shareMessage,
-      subject: "Culture Cards: $title",
+      subject: "AREIS: $title",
     );
   }
 
@@ -35,7 +35,7 @@ class ShareHelper {
     String? rating,
   }) {
     final String shareUrl = "https://culturecards.app/profile/$traderId";
-    final String shareMessage = "Check out @$username's collector profile on Culture Cards! 🌟\nRating: ${rating ?? '5.0'} ⭐\nView profile: $shareUrl";
+    final String shareMessage = "Check out @$username's profile on AREIS! 🌟\nRating: ${rating ?? '5.0'} ⭐\nView profile: $shareUrl";
 
     _showShareBottomSheet(
       context: context,
@@ -44,7 +44,7 @@ class ShareHelper {
       itemSubtitle: rating != null ? "Rating: $rating ⭐" : "Verified Trader",
       shareUrl: shareUrl,
       shareMessage: shareMessage,
-      subject: "Culture Cards: @$username",
+      subject: "AREIS: @$username",
     );
   }
 

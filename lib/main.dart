@@ -84,7 +84,7 @@ class MyApp extends StatelessWidget {
       builder: (context, child) {
         return GetMaterialApp(
           debugShowCheckedModeBanner: false,
-          title: 'Live Stream App',
+          title: 'AREIS',
           theme: ThemeData(
             brightness: Brightness.dark,
             useMaterial3: true,

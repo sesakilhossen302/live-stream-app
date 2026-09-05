@@ -609,7 +609,7 @@ class CreateTradeScreen extends GetView<CreateTradeController> {
 
           // Horizontal Thumbnail Row
           SizedBox(
-            height: 80.h,
+            height: 68.h,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               physics: const BouncingScrollPhysics(),
@@ -620,19 +620,34 @@ class CreateTradeScreen extends GetView<CreateTradeController> {
                   return GestureDetector(
                     onTap: () => controller.pickImages(),
                     child: Container(
-                      width: 80.h,
-                      margin: EdgeInsets.only(right: 12.w),
+                      width: 60.h,
+                      height: 60.h,
+                      margin: EdgeInsets.only(top: 4.h, right: 10.w),
                       decoration: BoxDecoration(
                         color: const Color(0xFF11111A),
-                        borderRadius: BorderRadius.circular(16.r),
-                        border: Border.all(color: const Color(0xFF8B9BFF).withOpacity(0.2), width: 1.5),
+                        borderRadius: BorderRadius.circular(14.r),
+                        border: Border.all(
+                          color: const Color(0xFF8B9BFF).withOpacity(0.3),
+                          width: 1.2,
+                        ),
                       ),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.add_a_photo_outlined, color: const Color(0xFF8B9BFF), size: 20.sp),
-                          SizedBox(height: 4.h),
-                          Text("Add", style: TextStyle(color: const Color(0xFF8B9BFF), fontSize: 10.sp, fontWeight: FontWeight.bold)),
+                          Icon(
+                            Icons.add_a_photo_outlined,
+                            color: const Color(0xFF8B9BFF),
+                            size: 18.sp,
+                          ),
+                          SizedBox(height: 3.h),
+                          Text(
+                            "Add",
+                            style: TextStyle(
+                              color: const Color(0xFF8B9BFF),
+                              fontSize: 10.sp,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -646,30 +661,35 @@ class CreateTradeScreen extends GetView<CreateTradeController> {
                     clipBehavior: Clip.none,
                     children: [
                       Container(
-                        width: 80.h,
-                        margin: EdgeInsets.only(right: 12.w),
+                        width: 60.h,
+                        height: 60.h,
+                        margin: EdgeInsets.only(top: 4.h, right: 10.w),
                         decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(16.r),
+                          borderRadius: BorderRadius.circular(14.r),
                           border: Border.all(
-                            color: isSelected ? const Color(0xFF8B9BFF) : Colors.white.withOpacity(0.05),
-                            width: isSelected ? 2.5 : 1,
+                            color: isSelected
+                                ? const Color(0xFF8B9BFF)
+                                : Colors.white.withOpacity(0.1),
+                            width: isSelected ? 2.0 : 1.0,
                           ),
                         ),
                         child: ClipRRect(
-                          borderRadius: BorderRadius.circular(14.r),
+                          borderRadius: BorderRadius.circular(12.r),
                           child: Image.file(
                             images[index],
                             fit: BoxFit.cover,
+                            width: 60.h,
+                            height: 60.h,
                           ),
                         ),
                       ),
                       Positioned(
-                        top: -4.h,
-                        right: 8.w,
+                        top: 0,
+                        right: 6.w,
                         child: GestureDetector(
                           onTap: () => controller.removeImage(index),
                           child: Container(
-                            padding: EdgeInsets.all(4.r),
+                            padding: EdgeInsets.all(3.r),
                             decoration: const BoxDecoration(
                               color: Colors.red,
                               shape: BoxShape.circle,

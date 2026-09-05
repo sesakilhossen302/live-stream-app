@@ -195,7 +195,23 @@ class PushNotificationService {
     try {
       final fcm = _fcm;
       if (fcm == null) return SharePrefsHelper.getString(SharePrefsHelper.fcmTokenKey);
-      String? token = await fcm.getToken().timeout(const Duration(seconds: 2));
+
+      // On iOS, ensure APNs token is set before requesting FCM token
+      if (defaultTargetPlatform == TargetPlatform.iOS) {
+        final apnsToken = await fcm.getAPNSToken().timeout(
+          const Duration(seconds: 2),
+          onTimeout: () => null,
+        );
+        if (apnsToken == null) {
+          debugPrint("ℹ️ [PushNotificationService] APNs token not yet available, will fetch FCM token on refresh.");
+          return SharePrefsHelper.getString(SharePrefsHelper.fcmTokenKey);
+        }
+      }
+
+      String? token = await fcm.getToken().timeout(
+        const Duration(seconds: 3),
+        onTimeout: () => null,
+      );
       if (token != null && token.isNotEmpty) {
         await SharePrefsHelper.setString(SharePrefsHelper.fcmTokenKey, token);
         debugPrint("🔑 [FCM Token]: $token");

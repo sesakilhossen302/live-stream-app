@@ -2578,14 +2578,40 @@ class AgoraLiveController extends GetxController with WidgetsBindingObserver {
     }
   }
 
+  void _cleanupSocket() {
+    try {
+      if (Get.isRegistered<SocketService>()) {
+        final socketService = Get.find<SocketService>();
+        if (streamId.value.isNotEmpty) {
+          socketService.leaveChat(streamId.value);
+        }
+      }
+    } catch (e) {
+      debugPrint("⚠️ Socket cleanup error in live stream: $e");
+    }
+  }
+
   @override
   void onClose() {
-    WidgetsBinding.instance.removeObserver(this);
-    LiveStreamServiceBridge.stopLiveService();
+    try {
+      WidgetsBinding.instance.removeObserver(this);
+    } catch (_) {}
+    
+    try {
+      LiveStreamServiceBridge.stopLiveService();
+    } catch (_) {}
+
     _countdownTimer?.cancel();
     _cleanupSocket();
-    engine?.leaveChannel();
-    engine?.release();
+
+    try {
+      engine?.leaveChannel();
+      engine?.release();
+      engine = null;
+    } catch (e) {
+      debugPrint("⚠️ Agora engine release error: $e");
+    }
+
     super.onClose();
   }
 

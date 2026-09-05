@@ -14,14 +14,20 @@ import 'view/screens/live_stream/controller/agora_live_controller.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Load environment variables safely
+  // Catch framework errors gracefully
+  FlutterError.onError = (FlutterErrorDetails details) {
+    FlutterError.presentError(details);
+    debugPrint("🔴 Flutter Error: ${details.exceptionAsString()}");
+  };
+
+  // 1. Load environment variables safely
   try {
     await dotenv.load(fileName: ".env");
   } catch (e) {
     debugPrint("⚠️ Environment file (.env) load error: $e");
   }
 
-  // Initialize Stripe publishable key safely
+  // 2. Initialize Stripe publishable key safely
   try {
     String? key;
     if (dotenv.isInitialized) {
@@ -33,38 +39,58 @@ void main() async {
       Stripe.instance.applySettings();
     }
   } catch (e) {
-    debugPrint("Stripe init error: $e");
+    debugPrint("⚠️ Stripe init error: $e");
   }
 
-  SystemChrome.setSystemUIOverlayStyle(
-    const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.light,
-      systemNavigationBarColor: Colors.transparent,
-      systemNavigationBarIconBrightness: Brightness.light,
-      systemNavigationBarDividerColor: Colors.transparent,
-    ),
-  );
-  await SharePrefsHelper.init();
-  DependencyInjection.init();
+  // 3. System UI Overlay Style
+  try {
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+        systemNavigationBarColor: Colors.transparent,
+        systemNavigationBarIconBrightness: Brightness.light,
+        systemNavigationBarDividerColor: Colors.transparent,
+      ),
+    );
+  } catch (_) {}
 
-  // Initialize Push Notification Service (FCM & Local Notifications)
+  // 4. SharedPreferences initialization
+  try {
+    await SharePrefsHelper.init();
+  } catch (e) {
+    debugPrint("⚠️ SharePrefsHelper init error: $e");
+  }
+
+  // 5. Dependency Injection
+  try {
+    DependencyInjection.init();
+  } catch (e) {
+    debugPrint("⚠️ DependencyInjection init error: $e");
+  }
+
+  // 6. Initialize Push Notification Service (FCM & Local Notifications)
   try {
     await PushNotificationService.instance.init();
   } catch (e) {
     debugPrint("⚠️ PushNotificationService init error: $e");
   }
 
-  final String accessToken = SharePrefsHelper.getString(SharePrefsHelper.accessTokenKey);
-  final bool isGuest = SharePrefsHelper.isGuest;
-  final bool hasSeenOnboarding = SharePrefsHelper.getBool("hasSeenOnboarding");
+  String initialRoute = AppRoute.onboarding;
+  try {
+    final String accessToken = SharePrefsHelper.getString(SharePrefsHelper.accessTokenKey);
+    final bool isGuest = SharePrefsHelper.isGuest;
+    final bool hasSeenOnboarding = SharePrefsHelper.getBool("hasSeenOnboarding");
 
-  String initialRoute;
-  if (accessToken.isNotEmpty || isGuest) {
-    initialRoute = AppRoute.main;
-  } else if (hasSeenOnboarding) {
-    initialRoute = AppRoute.login;
-  } else {
+    if (accessToken.isNotEmpty || isGuest) {
+      initialRoute = AppRoute.main;
+    } else if (hasSeenOnboarding) {
+      initialRoute = AppRoute.login;
+    } else {
+      initialRoute = AppRoute.onboarding;
+    }
+  } catch (e) {
+    debugPrint("⚠️ Route resolution error: $e");
     initialRoute = AppRoute.onboarding;
   }
 

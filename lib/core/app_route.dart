@@ -34,6 +34,8 @@ import '../view/screens/purchases/screen/shipping_label_viewer_screen.dart';
 import '../view/screens/sold_items/screen/sold_items_screen.dart';
 import '../view/screens/spin_wheel/screen/spin_wheel_screen.dart';
 import '../view/screens/checkout/screen/order_checkout_screen.dart';
+import '../view/screens/trade_voting/screen/trade_voting_feed_screen.dart';
+import '../view/screens/trade_voting/controller/trade_voting_controller.dart';
 
 import '../view/screens/profile/screen/blocked_users_screen.dart';
 
@@ -73,6 +75,7 @@ class AppRoute {
   static const String shippingLabel = "/shipping_label";
   static const String spinWheel = "/spin_wheel";
   static const String inAppWebView = "/in_app_web_view";
+  static const String tradeVotingFeed = "/trade_voting_feed";
 
   static List<GetPage> routes = [
     GetPage(name: forgotPassword, page: () => const ForgotPasswordScreen()),
@@ -118,5 +121,12 @@ class AppRoute {
     GetPage(name: spinWheel, page: () => const SpinWheelScreen()),
     GetPage(name: checkout, page: () => const OrderCheckoutScreen()),
     GetPage(name: inAppWebView, page: () => const InAppWebViewScreen()),
+    GetPage(
+      name: tradeVotingFeed,
+      page: () => const TradeVotingFeedScreen(),
+      binding: BindingsBuilder(() {
+        Get.put<TradeVotingController>(TradeVotingController());
+      }),
+    ),
   ];
 }

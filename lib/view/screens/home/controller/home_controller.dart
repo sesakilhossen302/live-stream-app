@@ -1,10 +1,13 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import '../../../../data/helpers/shared_prefe.dart';
 import '../../../../data/services/api_client.dart';
 import '../../../../data/services/api_url.dart';
 import '../../../../data/services/socket_service.dart';
+import '../../../../global/helper/auth_guard.dart';
+import '../../trade_voting/model/trade_vote_model.dart';
 
 class HomeController extends GetxController {
   final ApiClient _apiClient = Get.find<ApiClient>();
@@ -60,59 +63,220 @@ class HomeController extends GetxController {
 
   // Recent Trades (Who Won The Trade?) Voting Feature
   final RxInt currentTradeIndex = 0.obs;
-  final RxList<RecentTradeVoteModel> recentTrades = <RecentTradeVoteModel>[
-    RecentTradeVoteModel(
-      id: "trade_1",
-      itemAName: "Nike Dunk Low 'Panda' (DS)",
-      itemAValue: "\$180",
-      itemAImage: "https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?q=80&w=800",
-      itemBName: "Air Jordan 1 High 'Shadow 2.0'",
-      itemBValue: "\$210",
-      itemBImage: "https://images.unsplash.com/photo-1584735935682-2f2b69dff9d2?q=80&w=800",
-      category: "Sneakers",
+  final RxBool isRecentTradesLoading = false.obs;
+  final RxList<TradeVoteModel> recentTrades = <TradeVoteModel>[
+    TradeVoteModel(
+      id: "65f123abc456789012345678",
+      tradeId: "65ee99887766554433221100",
+      category: "Trading Cards",
       timeAgo: "Completed 2h ago",
+      itemA: TradeVoteItemModel(
+        name: "1986 Michael Jordan Fleer #57 PSA 8",
+        value: "\$1,800",
+        image: "https://images.unsplash.com/photo-1534447677768-be436bb09401?q=80&w=800",
+        traderName: "CollectorKing",
+      ),
+      itemB: TradeVoteItemModel(
+        name: "2003 LeBron James Topps Chrome PSA 9",
+        value: "\$2,100",
+        image: "https://images.unsplash.com/photo-1613771404784-3a5686aa2be3?q=80&w=800",
+        traderName: "HoopsLegacy",
+      ),
       initialVotesA: 14,
       initialVotesB: 36,
+      initialTotalVotes: 50,
+      initialPercentageA: 28,
+      initialPercentageB: 72,
     ),
-    RecentTradeVoteModel(
+    TradeVoteModel(
       id: "trade_2",
-      itemAName: "Charizard Base Set Holo (PSA 8)",
-      itemAValue: "\$480",
-      itemAImage: "https://images.unsplash.com/photo-1613771404784-3a5686aa2be3?q=80&w=800",
-      itemBName: "1986 Fleer Michael Jordan (PSA 7)",
-      itemBValue: "\$520",
-      itemBImage: "https://images.unsplash.com/photo-1534447677768-be436bb09401?q=80&w=800",
-      category: "Trading Cards",
+      tradeId: "trade_id_2",
+      category: "Sneakers",
       timeAgo: "Completed 5h ago",
+      itemA: TradeVoteItemModel(
+        name: "Nike Dunk Low 'Panda' (DS)",
+        value: "\$180",
+        image: "https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?q=80&w=800",
+        traderName: "KicksGuru",
+      ),
+      itemB: TradeVoteItemModel(
+        name: "Air Jordan 1 High 'Shadow 2.0'",
+        value: "\$210",
+        image: "https://images.unsplash.com/photo-1584735935682-2f2b69dff9d2?q=80&w=800",
+        traderName: "SneakerVault",
+      ),
       initialVotesA: 42,
       initialVotesB: 58,
-    ),
-    RecentTradeVoteModel(
-      id: "trade_3",
-      itemAName: "Supreme Box Logo Hoodie 'Heather Grey'",
-      itemAValue: "\$350",
-      itemAImage: "https://images.unsplash.com/photo-1556905055-8f358a7a47b2?q=80&w=800",
-      itemBName: "Travis Scott Jordan 1 Low 'Reverse Mocha'",
-      itemBValue: "\$450",
-      itemBImage: "https://images.unsplash.com/photo-1600185365926-3a2ce3cdb9eb?q=80&w=800",
-      category: "Streetwear",
-      timeAgo: "Completed 1d ago",
-      initialVotesA: 18,
-      initialVotesB: 82,
+      initialTotalVotes: 100,
+      initialPercentageA: 42,
+      initialPercentageB: 58,
     ),
   ].obs;
 
-  void voteOnTrade(String tradeId, String option) {
-    final trade = recentTrades.firstWhereOrNull((t) => t.id == tradeId);
-    if (trade == null || trade.hasVoted.value) return;
-
-    trade.hasVoted.value = true;
-    trade.votedOption.value = option;
-    if (option == "A") {
-      trade.votesA.value += 1;
-    } else {
-      trade.votesB.value += 1;
+  Future<void> fetchRecentTrades() async {
+    isRecentTradesLoading.value = true;
+    try {
+      final endpoint = "${ApiUrl.tradeVotesFeed}?page=1&limit=5";
+      final response = await _apiClient.getData(endpoint);
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true && data['data'] is List) {
+          final List rawList = data['data'];
+          if (rawList.isNotEmpty) {
+            final List<TradeVoteModel> items = rawList
+                .map((item) => TradeVoteModel.fromJson(item as Map<String, dynamic>))
+                .toList();
+            recentTrades.assignAll(items);
+            currentTradeIndex.value = 0;
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint("Error fetching recent trade votes on Home: $e");
+    } finally {
+      isRecentTradesLoading.value = false;
     }
+  }
+
+  Future<void> voteOnTrade(TradeVoteModel trade, String option) async {
+    final isGuest = SharePrefsHelper.isGuest ||
+        SharePrefsHelper.getString(SharePrefsHelper.accessTokenKey).isEmpty;
+    if (isGuest) {
+      AuthGuard.showAuthPrompt(
+        title: "Sign In Required",
+        message: "Sign in or create an account to participate in community trade voting!",
+      );
+      return;
+    }
+
+    if (trade.hasVoted.value || trade.isVoting.value) return;
+
+    // If this is a demo placeholder card (because live database has 0 trades right now),
+    // simulate the vote locally so developers can test the full UI without a 400 server error!
+    final isRealMongoId = RegExp(r'^[0-9a-fA-F]{24}$').hasMatch(trade.id);
+    if (!isRealMongoId || trade.id == "65f123abc456789012345678" || trade.id.startsWith("trade_")) {
+      trade.hasVoted.value = true;
+      trade.votedOption.value = option;
+      if (option == "A") {
+        trade.votesA.value += 1;
+      } else {
+        trade.votesB.value += 1;
+      }
+      final sum = trade.votesA.value + trade.votesB.value;
+      trade.totalVotes.value = sum;
+      if (sum > 0) {
+        trade.percentageA.value = ((trade.votesA.value / sum) * 100).round();
+        trade.percentageB.value = 100 - trade.percentageA.value;
+      }
+      _showToast("Demo vote simulated locally (Backend has 0 active trades yet)", isError: false);
+      return;
+    }
+
+    trade.isVoting.value = true;
+
+    try {
+      final endpoint = ApiUrl.castTradeVote(trade.id);
+      final response = await _apiClient.postData(endpoint, {"option": option});
+
+      switch (response.statusCode) {
+        case 200:
+          final resData = jsonDecode(response.body);
+          if (resData['data'] != null && resData['data'] is Map<String, dynamic>) {
+            trade.updateWithVoteResult(resData['data']);
+          } else {
+            trade.hasVoted.value = true;
+            trade.votedOption.value = option;
+            if (option == "A") {
+              trade.votesA.value += 1;
+            } else {
+              trade.votesB.value += 1;
+            }
+            final sum = trade.votesA.value + trade.votesB.value;
+            trade.totalVotes.value = sum;
+            if (sum > 0) {
+              trade.percentageA.value = ((trade.votesA.value / sum) * 100).round();
+              trade.percentageB.value = 100 - trade.percentageA.value;
+            }
+          }
+          _showToast("Vote cast successfully!", isError: false);
+          break;
+
+        case 400:
+          try {
+            final body = jsonDecode(response.body);
+            final msg = (body['message'] ?? body['error'] ?? "This vote is no longer active.").toString();
+            // If it is a demo placeholder card (since live backend currently has 0 trades),
+            // allow local simulation so user can test the interactive UI flow
+            if (trade.id == "65f123abc456789012345678" || trade.id.startsWith("trade_")) {
+              trade.hasVoted.value = true;
+              trade.votedOption.value = option;
+              if (option == "A") {
+                trade.votesA.value += 1;
+              } else {
+                trade.votesB.value += 1;
+              }
+              final sum = trade.votesA.value + trade.votesB.value;
+              trade.totalVotes.value = sum;
+              if (sum > 0) {
+                trade.percentageA.value = ((trade.votesA.value / sum) * 100).round();
+                trade.percentageB.value = 100 - trade.percentageA.value;
+              }
+              _showToast("Demo vote simulated locally (Backend has 0 active trades yet)", isError: false);
+              break;
+            }
+            _showToast(msg.isNotEmpty ? msg : "This vote is no longer active.");
+          } catch (_) {
+            _showToast("This vote is no longer active.");
+          }
+          break;
+
+        case 401:
+          AuthGuard.showAuthPrompt(
+            title: "Sign In Required",
+            message: "Your session has expired. Sign in to vote on trades!",
+          );
+          break;
+
+        case 403:
+          _showToast("You can't vote on your own trade.");
+          break;
+
+        case 409:
+          _showToast("You've already voted on this trade!");
+          trade.hasVoted.value = true;
+          break;
+
+        case 404:
+          recentTrades.removeWhere((item) => item.id == trade.id);
+          if (currentTradeIndex.value >= recentTrades.length && recentTrades.isNotEmpty) {
+            currentTradeIndex.value = recentTrades.length - 1;
+          }
+          break;
+
+        default:
+          final body = jsonDecode(response.body);
+          final msg = (body['message'] ?? body['error'] ?? "Failed to cast vote").toString();
+          _showToast(msg);
+          break;
+      }
+    } catch (e) {
+      _showToast("Unable to submit vote. Please try again.");
+    } finally {
+      trade.isVoting.value = false;
+    }
+  }
+
+  void _showToast(String message, {bool isError = true}) {
+    Get.snackbar(
+      isError ? "Notice" : "Success",
+      message,
+      snackPosition: SnackPosition.BOTTOM,
+      backgroundColor: isError ? const Color(0xFFE53935) : const Color(0xFF22C55E),
+      colorText: Colors.white,
+      margin: EdgeInsets.all(16.w),
+      borderRadius: 12.r,
+      duration: const Duration(seconds: 3),
+    );
   }
 
   void nextTrade() {
@@ -151,6 +315,7 @@ class HomeController extends GetxController {
       fetchCategories(),
       fetchProducts(showLoading: products.isEmpty),
       fetchUnreadNotificationCount(),
+      fetchRecentTrades(),
     ]);
   }
 
@@ -646,40 +811,5 @@ class LiveItemModel {
   });
 }
 
-class RecentTradeVoteModel {
-  final String id;
-  final String itemAName;
-  final String itemAValue;
-  final String itemAImage;
-  final String itemBName;
-  final String itemBValue;
-  final String itemBImage;
-  final String category;
-  final String timeAgo;
-  final RxInt votesA;
-  final RxInt votesB;
-  final RxBool hasVoted;
-  final RxString votedOption; // 'A' or 'B'
-
-  RecentTradeVoteModel({
-    required this.id,
-    required this.itemAName,
-    required this.itemAValue,
-    required this.itemAImage,
-    required this.itemBName,
-    required this.itemBValue,
-    required this.itemBImage,
-    required this.category,
-    required this.timeAgo,
-    int initialVotesA = 12,
-    int initialVotesB = 28,
-  })  : votesA = initialVotesA.obs,
-        votesB = initialVotesB.obs,
-        hasVoted = false.obs,
-        votedOption = ''.obs;
-
-  int get totalVotes => votesA.value + votesB.value;
-  double get percentageA => totalVotes == 0 ? 50.0 : (votesA.value / totalVotes) * 100;
-  double get percentageB => totalVotes == 0 ? 50.0 : (votesB.value / totalVotes) * 100;
-}
+typedef RecentTradeVoteModel = TradeVoteModel;
 

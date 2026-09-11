@@ -53,6 +53,8 @@ class ApiUrl {
   static const String tradeOffers = "/trades/offers";
   static const String acceptTrade = "/trades/accept";
   static const String declineTrade = "/trades/decline";
+  static const String tradeVotesFeed = "/trades/votes/feed";
+  static String castTradeVote(String id) => "/trades/votes/$id/cast";
 
   // Category
   static const String category = "/category";

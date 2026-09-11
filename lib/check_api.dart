@@ -3,15 +3,16 @@ import 'package:http/http.dart' as http;
 
 void main() async {
   try {
-    final response = await http.get(Uri.parse('http://10.10.26.208:5007/api/v1/products?allowTrade=true'));
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      final List products = data['data'] ?? [];
-      if (products.isNotEmpty) {
-        final first = products.first;
-        print(const JsonEncoder.withIndent('  ').convert(first));
-      }
-    }
+    final response = await http.post(
+      Uri.parse('https://mohosin5001.binarybards.online/api/v1/trades/votes/65f123abc456789012345678/cast'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: jsonEncode({"option": "A"}),
+    );
+    print('STATUS CODE: ${response.statusCode}');
+    print('RESPONSE BODY: ${response.body}');
   } catch (e) {
     print('Error: $e');
   }

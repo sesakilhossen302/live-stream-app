@@ -12,6 +12,7 @@ class TradeVoteCard extends StatelessWidget {
   final VoidCallback? onPrev;
   final VoidCallback? onNext;
   final String? counterText;
+  final bool isCompact;
 
   const TradeVoteCard({
     super.key,
@@ -21,6 +22,7 @@ class TradeVoteCard extends StatelessWidget {
     this.onPrev,
     this.onNext,
     this.counterText,
+    this.isCompact = false,
   });
 
   @override
@@ -29,7 +31,7 @@ class TradeVoteCard extends StatelessWidget {
       width: double.infinity,
       decoration: BoxDecoration(
         color: const Color(0xFF130F26),
-        borderRadius: BorderRadius.circular(24.r),
+        borderRadius: BorderRadius.circular(isCompact ? 20.r : 24.r),
         border: Border.all(
           color: const Color(0xFF2E2452),
           width: 1.2.w,
@@ -42,7 +44,7 @@ class TradeVoteCard extends StatelessWidget {
           ),
         ],
       ),
-      padding: EdgeInsets.all(16.r),
+      padding: EdgeInsets.all(isCompact ? 12.r : 16.r),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -159,13 +161,13 @@ class TradeVoteCard extends StatelessWidget {
             ],
           ),
 
-          SizedBox(height: 12.h),
+          SizedBox(height: isCompact ? 8.h : 12.h),
 
           Text(
             "Who won this trade? 🔥",
             style: TextStyle(
               color: Colors.white,
-              fontSize: 17.sp,
+              fontSize: isCompact ? 15.sp : 17.sp,
               fontWeight: FontWeight.w900,
             ),
           ),
@@ -173,12 +175,12 @@ class TradeVoteCard extends StatelessWidget {
             "Community verdict • Tap to pick the winning side",
             style: TextStyle(
               color: Colors.white38,
-              fontSize: 11.sp,
+              fontSize: isCompact ? 10.sp : 11.sp,
               fontWeight: FontWeight.w500,
             ),
           ),
 
-          SizedBox(height: 16.h),
+          SizedBox(height: isCompact ? 10.h : 16.h),
 
           // Comparison: Trader A vs Trader B
           Obx(() {
@@ -203,9 +205,9 @@ class TradeVoteCard extends StatelessWidget {
 
                 // VS Badge
                 Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 40.h),
+                  padding: EdgeInsets.symmetric(horizontal: isCompact ? 6.w : 8.w, vertical: isCompact ? 26.h : 40.h),
                   child: Container(
-                    padding: EdgeInsets.all(8.r),
+                    padding: EdgeInsets.all(isCompact ? 6.r : 8.r),
                     decoration: BoxDecoration(
                       color: const Color(0xFF1F183C),
                       shape: BoxShape.circle,
@@ -224,7 +226,7 @@ class TradeVoteCard extends StatelessWidget {
                       "VS",
                       style: TextStyle(
                         color: const Color(0xFF8B9BFF),
-                        fontSize: 11.sp,
+                        fontSize: isCompact ? 9.5.sp : 11.sp,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
@@ -247,7 +249,7 @@ class TradeVoteCard extends StatelessWidget {
             );
           }),
 
-          SizedBox(height: 16.h),
+          SizedBox(height: isCompact ? 10.h : 16.h),
 
           // Action Area: Vote Buttons OR Result Bar
           Obx(() {
@@ -264,9 +266,9 @@ class TradeVoteCard extends StatelessWidget {
                         backgroundColor: const Color(0xFF8B9BFF),
                         foregroundColor: const Color(0xFF0F0B1E),
                         elevation: 0,
-                        padding: EdgeInsets.symmetric(vertical: 12.h),
+                        padding: EdgeInsets.symmetric(vertical: isCompact ? 9.h : 12.h),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16.r),
+                          borderRadius: BorderRadius.circular(isCompact ? 12.r : 16.r),
                         ),
                       ),
                       child: isVoting
@@ -285,13 +287,13 @@ class TradeVoteCard extends StatelessWidget {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
-                                fontSize: 12.sp,
+                                fontSize: isCompact ? 11.sp : 12.sp,
                                 fontWeight: FontWeight.w900,
                               ),
                             ),
                     ),
                   ),
-                  SizedBox(width: 12.w),
+                  SizedBox(width: isCompact ? 8.w : 12.w),
                   Expanded(
                     child: ElevatedButton(
                       onPressed: isVoting ? null : () => onVote(trade, "B"),
@@ -299,9 +301,9 @@ class TradeVoteCard extends StatelessWidget {
                         backgroundColor: const Color(0xFFD677FF),
                         foregroundColor: const Color(0xFF0F0B1E),
                         elevation: 0,
-                        padding: EdgeInsets.symmetric(vertical: 12.h),
+                        padding: EdgeInsets.symmetric(vertical: isCompact ? 9.h : 12.h),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16.r),
+                          borderRadius: BorderRadius.circular(isCompact ? 12.r : 16.r),
                         ),
                       ),
                       child: isVoting
@@ -320,7 +322,7 @@ class TradeVoteCard extends StatelessWidget {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
-                                fontSize: 12.sp,
+                                fontSize: isCompact ? 11.sp : 12.sp,
                                 fontWeight: FontWeight.w900,
                               ),
                             ),
@@ -467,10 +469,10 @@ class TradeVoteCard extends StatelessWidget {
     required Color accentColor,
   }) {
     return Container(
-      padding: EdgeInsets.all(10.r),
+      padding: EdgeInsets.all(isCompact ? 8.r : 10.r),
       decoration: BoxDecoration(
         color: const Color(0xFF1A1434),
-        borderRadius: BorderRadius.circular(18.r),
+        borderRadius: BorderRadius.circular(isCompact ? 14.r : 18.r),
         border: Border.all(
           color: isVoted ? accentColor : Colors.white.withValues(alpha: 0.06),
           width: isVoted ? 1.8 : 1,
@@ -502,7 +504,7 @@ class TradeVoteCard extends StatelessWidget {
                   sideTag,
                   style: TextStyle(
                     color: isVoted ? const Color(0xFF0F0B1E) : Colors.white70,
-                    fontSize: 9.5.sp,
+                    fontSize: isCompact ? 9.sp : 9.5.sp,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
@@ -534,26 +536,26 @@ class TradeVoteCard extends StatelessWidget {
           ),
 
           if (traderName.isNotEmpty) ...[
-            SizedBox(height: 4.h),
+            SizedBox(height: 3.h),
             Text(
               traderName,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 color: Colors.white54,
-                fontSize: 10.5.sp,
+                fontSize: isCompact ? 9.5.sp : 10.5.sp,
                 fontWeight: FontWeight.w600,
               ),
             ),
           ],
 
-          SizedBox(height: 8.h),
+          SizedBox(height: isCompact ? 6.h : 8.h),
 
           // Item Image
           ClipRRect(
             borderRadius: BorderRadius.circular(12.r),
             child: Container(
-              height: 100.h,
+              height: isCompact ? 76.h : 100.h,
               width: double.infinity,
               color: Colors.black26,
               child: imageUrl.isNotEmpty
@@ -562,7 +564,7 @@ class TradeVoteCard extends StatelessWidget {
                       fit: BoxFit.cover,
                       placeholder: (context, url) => CustomShimmer.rectangular(
                         width: double.infinity,
-                        height: 100.h,
+                        height: isCompact ? 76.h : 100.h,
                         shapeBorder: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
                       ),
                       errorWidget: (context, url, error) => _buildImageFallback(),
@@ -571,7 +573,7 @@ class TradeVoteCard extends StatelessWidget {
             ),
           ),
 
-          SizedBox(height: 8.h),
+          SizedBox(height: isCompact ? 6.h : 8.h),
 
           // Item Name
           Text(
@@ -580,13 +582,13 @@ class TradeVoteCard extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
               color: Colors.white,
-              fontSize: 12.sp,
+              fontSize: isCompact ? 11.5.sp : 12.sp,
               fontWeight: FontWeight.w700,
               height: 1.2,
             ),
           ),
 
-          SizedBox(height: 4.h),
+          SizedBox(height: 3.h),
 
           // Value
           if (value.isNotEmpty)
@@ -594,7 +596,7 @@ class TradeVoteCard extends StatelessWidget {
               value,
               style: TextStyle(
                 color: const Color(0xFF22C55E),
-                fontSize: 12.sp,
+                fontSize: isCompact ? 11.sp : 12.sp,
                 fontWeight: FontWeight.w900,
               ),
             ),

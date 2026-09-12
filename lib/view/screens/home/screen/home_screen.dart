@@ -13,6 +13,7 @@ import '../../../../global/widgets/custom_shimmer.dart';
 import '../../../../global/helper/auth_guard.dart';
 import '../../../../data/services/api_url.dart';
 import '../../trade_voting/widgets/trade_vote_card.dart';
+import '../../trade_voting/widgets/tinder_swipeable_trade_voting.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -25,7 +26,7 @@ class HomeScreen extends StatelessWidget {
         child: RefreshIndicator(
           color: const Color(0xFF8B9BFF),
           backgroundColor: const Color(0xFF1E1E2C),
-          onRefresh: () async {
+           onRefresh: () async {
             await controller.refreshHome();
           },
           child: NotificationListener<ScrollNotification>(
@@ -1199,7 +1200,6 @@ class HomeScreen extends StatelessWidget {
     return Obx(() {
       if (controller.recentTrades.isEmpty) return const SizedBox.shrink();
       final idx = controller.currentTradeIndex.value;
-      final trade = controller.recentTrades[idx % controller.recentTrades.length];
 
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1239,13 +1239,12 @@ class HomeScreen extends StatelessWidget {
             ],
           ),
           SizedBox(height: 12.h),
-          TradeVoteCard(
-            trade: trade,
+          TinderSwipeableTradeVoting(
+            trades: controller.recentTrades,
+            currentIndex: idx,
             onVote: controller.voteOnTrade,
-            showHeaderArrows: true,
-            onPrev: controller.prevTrade,
             onNext: controller.nextTrade,
-            counterText: "${idx + 1}/${controller.recentTrades.length}",
+            onPrev: controller.prevTrade,
           ),
         ],
       );
@@ -1268,69 +1267,46 @@ class HomeScreen extends StatelessWidget {
         children: [
           SizedBox(height: 12.h),
 
-          // Premium Section Header
+          // Header matching mockup: Current & Upcoming Shows | See All
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.end,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Text(
-                        "Upcoming Shows",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 22.sp,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: -0.4,
-                        ),
-                      ),
-                      SizedBox(width: 10.w),
-                      Container(
-                        padding: EdgeInsets.symmetric(horizontal: 9.w, vertical: 3.h),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF8B9BFF).withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(12.r),
-                          border: Border.all(
-                            color: const Color(0xFF8B9BFF).withValues(alpha: 0.35),
-                            width: 1,
-                          ),
-                        ),
-                        child: Text(
-                          "${controller.scheduledShows.length} Scheduled",
-                          style: TextStyle(
-                            color: const Color(0xFF8B9BFF),
-                            fontSize: 11.sp,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 4.h),
-                  Text(
-                    "Tune in or set reminders for upcoming live auctions",
+              Text(
+                "Current & Upcoming Shows",
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 20.sp,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -0.3,
+                ),
+              ),
+              GestureDetector(
+                onTap: () => Get.to(() => PurchasesScreen()),
+                behavior: HitTestBehavior.opaque,
+                child: Padding(
+                  padding: EdgeInsets.symmetric(vertical: 4.h),
+                  child: Text(
+                    "See All",
                     style: TextStyle(
-                      color: Colors.white54,
-                      fontSize: 13.sp,
-                      fontWeight: FontWeight.w500,
+                      color: const Color(0xFF8B9BFF),
+                      fontSize: 13.5.sp,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
-                ],
+                ),
               ),
             ],
           ),
 
-          SizedBox(height: 18.h),
+          SizedBox(height: 14.h),
 
-          // Horizontal Carousel (Full edge-to-edge scrolling without clipping)
+          // Horizontal Carousel (Matching Mockup with sleek cards)
           Builder(
             builder: (context) {
               final screenWidth = MediaQuery.of(context).size.width;
               return SizedBox(
-                height: 270.h,
+                height: 185.h,
                 child: OverflowBox(
                   minWidth: 0.0,
                   maxWidth: screenWidth,
@@ -1451,6 +1427,27 @@ class HomeScreen extends StatelessWidget {
       }
     }
 
+    // Resolve short countdown (e.g. "Starts in 2h")
+    String formattedTimeShort = "Starts in 2h";
+    if (rawTime.isNotEmpty) {
+      try {
+        final dt = DateTime.parse(rawTime).toLocal();
+        final now = DateTime.now();
+        final diff = dt.difference(now);
+        if (diff.isNegative) {
+          formattedTimeShort = "Starts in 2h";
+        } else if (diff.inHours > 0) {
+          formattedTimeShort = "Starts in ${diff.inHours}h";
+        } else if (diff.inMinutes > 0) {
+          formattedTimeShort = "Starts in ${diff.inMinutes}m";
+        } else {
+          formattedTimeShort = "Starts soon";
+        }
+      } catch (_) {
+        formattedTimeShort = "Starts in 2h";
+      }
+    }
+
     // Resolve seller info
     final seller = show['sellerId'] is Map ? show['sellerId'] : (show['seller'] is Map ? show['seller'] : null);
     final hostName = seller != null ? (seller['fullName'] ?? seller['name'] ?? 'Curator').toString() : 'Curator';
@@ -1468,344 +1465,198 @@ class HomeScreen extends StatelessWidget {
 
     final bool isLast = index == controller.scheduledShows.length - 1;
 
-    return Container(
-      width: 230.w,
-      margin: EdgeInsets.only(right: isLast ? 0 : 14.w),
-      decoration: BoxDecoration(
-        color: const Color(0xFF130F26),
-        borderRadius: BorderRadius.circular(20.r),
-        border: Border.all(
-          color: isMine ? const Color(0xFF8B9BFF).withValues(alpha: 0.5) : const Color(0xFF2E2452),
-          width: isMine ? 1.5 : 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.45),
-            blurRadius: 14.r,
-            offset: const Offset(0, 6),
+    return GestureDetector(
+      onTap: () {
+        if (isMine) {
+          if (Get.isRegistered<AgoraLiveController>()) {
+            final agoraCtrl = Get.find<AgoraLiveController>();
+            agoraCtrl.startScheduledStream(streamId, showData: show);
+          }
+        } else {
+          AuthGuard.check(
+            title: "Save Show",
+            message: "Sign in to bookmark this show and get reminded before it starts.",
+            onAuthorized: () => controller.toggleBookmarkShow(streamId),
+          );
+        }
+      },
+      child: Container(
+        width: 215.w,
+        margin: EdgeInsets.only(right: isLast ? 0 : 14.w),
+        decoration: BoxDecoration(
+          color: const Color(0xFF140F28),
+          borderRadius: BorderRadius.circular(18.r),
+          border: Border.all(
+            color: isMine ? const Color(0xFF8B9BFF).withValues(alpha: 0.6) : const Color(0xFF2C224E),
+            width: isMine ? 1.5 : 1.2,
           ),
-        ],
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // ─── TOP IMAGE AREA WITH OVERLAYS ───
-          SizedBox(
-            height: 140.h,
-            width: double.infinity,
-            child: Stack(
-              children: [
-                // Cover Image (handles base64, s3, relative url, and graceful fallback)
-                Positioned.fill(
-                  child: _buildUpcomingCoverImage(rawImg),
-                ),
-
-                // Multi-Stop Vignette & Gradient
-                Positioned.fill(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.black.withValues(alpha: 0.45),
-                          Colors.transparent,
-                          Colors.black.withValues(alpha: 0.75),
-                        ],
-                        stops: const [0.0, 0.45, 1.0],
-                      ),
-                    ),
-                  ),
-                ),
-
-                // Top Badge Row
-                Positioned(
-                  top: 10.h,
-                  left: 10.w,
-                  right: 10.w,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      // Status Badge
-                      if (isMine)
-                        Container(
-                          padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFF8B9BFF), Color(0xFF6C5CE7)],
-                            ),
-                            borderRadius: BorderRadius.circular(20.r),
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(0xFF8B9BFF).withValues(alpha: 0.4),
-                                blurRadius: 8,
-                              ),
-                            ],
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.star_rounded, color: Colors.white, size: 11.sp),
-                              SizedBox(width: 3.w),
-                              Text(
-                                "YOUR SHOW",
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 9.5.sp,
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: 0.5,
-                                ),
-                              ),
-                            ],
-                          ),
-                        )
-                      else
-                        Container(
-                          padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.65),
-                            borderRadius: BorderRadius.circular(20.r),
-                            border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.2),
-                              width: 1,
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                width: 5.r,
-                                height: 5.r,
-                                decoration: const BoxDecoration(
-                                  color: Color(0xFF8B9BFF),
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                              SizedBox(width: 5.w),
-                              Text(
-                                "SCHEDULED",
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 9.5.sp,
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: 0.5,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-
-                      // Bookmark button (for buyers)
-                      if (!isMine)
-                        GestureDetector(
-                          onTap: () {
-                            AuthGuard.check(
-                              title: "Save Show",
-                              message: "Sign in to bookmark this show and get reminded before it starts.",
-                              onAuthorized: () => controller.toggleBookmarkShow(streamId),
-                            );
-                          },
-                          child: Container(
-                            padding: EdgeInsets.all(6.r),
-                            decoration: BoxDecoration(
-                              color: Colors.black.withValues(alpha: 0.6),
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white24),
-                            ),
-                            child: Icon(Icons.bookmark_border_rounded, color: Colors.white, size: 15.sp),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-
-                // Bottom Left Time Chip
-                Positioned(
-                  bottom: 8.h,
-                  left: 10.w,
-                  child: Container(
-                    padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF0F0B1E).withValues(alpha: 0.88),
-                      borderRadius: BorderRadius.circular(12.r),
-                      border: Border.all(
-                        color: const Color(0xFF8B9BFF).withValues(alpha: 0.4),
-                        width: 1,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.5),
-                          blurRadius: 6,
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.schedule_rounded, color: const Color(0xFF8B9BFF), size: 12.sp),
-                        SizedBox(width: 4.w),
-                        Text(
-                          formattedTime,
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 10.5.sp,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.45),
+              blurRadius: 12.r,
+              offset: const Offset(0, 5),
             ),
-          ),
-
-          // ─── BOTTOM DETAILS & ACTION AREA ───
-          Expanded(
-            child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          ],
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ─── TOP IMAGE AREA WITH LIVE & COUNTDOWN BADGES (Matching Mockup) ───
+            SizedBox(
+              height: 122.h,
+              width: double.infinity,
+              child: Stack(
                 children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Show Title
-                      Text(
-                        title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 14.5.sp,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 0.2,
+                  // Collectibles / Pack Cover Image
+                  Positioned.fill(
+                    child: _buildUpcomingCoverImage(rawImg),
+                  ),
+
+                  // Vignette overlay
+                  Positioned.fill(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.black.withValues(alpha: 0.4),
+                            Colors.transparent,
+                            Colors.black.withValues(alpha: 0.7),
+                          ],
+                          stops: const [0.0, 0.4, 1.0],
                         ),
                       ),
+                    ),
+                  ),
 
-                      SizedBox(height: 4.h),
-
-                      // Host Row
-                      Row(
+                  // Top Left: Glowing Red "● LIVE" Badge
+                  Positioned(
+                    top: 8.h,
+                    left: 8.w,
+                    child: Container(
+                      padding: EdgeInsets.symmetric(horizontal: 7.w, vertical: 3.h),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFFFF3B5C), Color(0xFFFF5252)],
+                        ),
+                        borderRadius: BorderRadius.circular(10.r),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFFFF3B5C).withValues(alpha: 0.55),
+                            blurRadius: 8.r,
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           Container(
-                            width: 18.r,
-                            height: 18.r,
-                            decoration: BoxDecoration(
+                            width: 5.r,
+                            height: 5.r,
+                            decoration: const BoxDecoration(
+                              color: Colors.white,
                               shape: BoxShape.circle,
-                              border: Border.all(color: const Color(0xFF8B9BFF).withValues(alpha: 0.5)),
-                            ),
-                            clipBehavior: Clip.antiAlias,
-                            child: hostAvatar.isNotEmpty
-                                ? Image.network(hostAvatar, fit: BoxFit.cover, errorBuilder: (_, __, ___) => _buildFallbackAvatar(hostName))
-                                : _buildFallbackAvatar(hostName),
-                          ),
-                          SizedBox(width: 6.w),
-                          Expanded(
-                            child: Text(
-                              hostName,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: Colors.white70,
-                                fontSize: 11.5.sp,
-                                fontWeight: FontWeight.w700,
-                              ),
                             ),
                           ),
-                          Icon(Icons.verified_rounded, color: const Color(0xFF8B9BFF), size: 13.sp),
+                          SizedBox(width: 4.w),
+                          Text(
+                            "LIVE",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 9.sp,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
                         ],
                       ),
-                    ],
+                    ),
                   ),
 
-                  // Action Button
-                  if (isMine)
-                    GestureDetector(
-                      onTap: () {
-                        if (Get.isRegistered<AgoraLiveController>()) {
-                          final agoraCtrl = Get.find<AgoraLiveController>();
-                          agoraCtrl.startScheduledStream(streamId, showData: show);
-                        }
-                      },
-                      child: Container(
-                        width: double.infinity,
-                        height: 38.h,
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFF22C55E), Color(0xFF16A34A)],
-                          ),
-                          borderRadius: BorderRadius.circular(12.r),
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(0xFF22C55E).withValues(alpha: 0.35),
-                              blurRadius: 8,
-                              offset: const Offset(0, 3),
-                            ),
-                          ],
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.videocam_rounded, color: Colors.white, size: 16.sp),
-                            SizedBox(width: 6.w),
-                            Text(
-                              "START LIVE NOW 🚀",
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 11.5.sp,
-                                fontWeight: FontWeight.w900,
-                                letterSpacing: 0.3,
-                              ),
-                            ),
-                          ],
+                  // Top Right: Translucent Glass "Starts in 2h" Badge
+                  Positioned(
+                    top: 8.h,
+                    right: 8.w,
+                    child: Container(
+                      padding: EdgeInsets.symmetric(horizontal: 7.w, vertical: 3.h),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.75),
+                        borderRadius: BorderRadius.circular(10.r),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.18),
+                          width: 1,
                         ),
                       ),
-                    )
-                  else
-                    GestureDetector(
-                      onTap: () {
-                        AuthGuard.check(
-                          title: "Save Show",
-                          message: "Sign in to bookmark this show and get reminded before it starts.",
-                          onAuthorized: () => controller.toggleBookmarkShow(streamId),
-                        );
-                      },
-                      child: Container(
-                        width: double.infinity,
-                        height: 38.h,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF1E1E2C).withValues(alpha: 0.7),
-                          borderRadius: BorderRadius.circular(12.r),
-                          border: Border.all(
-                            color: const Color(0xFF8B9BFF).withValues(alpha: 0.35),
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.notifications_active_outlined, color: const Color(0xFF8B9BFF), size: 15.sp),
-                            SizedBox(width: 6.w),
-                            Text(
-                              "REMIND ME 🔔",
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 11.5.sp,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 0.3,
-                              ),
-                            ),
-                          ],
+                      child: Text(
+                        formattedTimeShort,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 9.sp,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ),
+                  ),
                 ],
               ),
             ),
-          ),
-        ],
+
+            // ─── BOTTOM DETAILS BAR (Avatar & Info) ───
+            Container(
+              height: 48.h,
+              padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 8.h),
+              color: const Color(0xFF181232),
+              child: Row(
+                children: [
+                  // Host Avatar (matches circular user thumbnails)
+                  Container(
+                    width: 24.r,
+                    height: 24.r,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: const Color(0xFF8B9BFF).withValues(alpha: 0.8),
+                        width: 1.2,
+                      ),
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: hostAvatar.isNotEmpty
+                        ? Image.network(
+                            hostAvatar,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => _buildFallbackAvatar(hostName),
+                          )
+                        : _buildFallbackAvatar(hostName),
+                  ),
+                  SizedBox(width: 8.w),
+
+                  // Title / Starts in 2h
+                  Expanded(
+                    child: Text(
+                      formattedTimeShort,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 12.sp,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+
+                  // Right side: Bookmark status or Action icon
+                  Icon(
+                    isMine ? Icons.videocam_rounded : Icons.bookmark_border_rounded,
+                    color: const Color(0xFF8B9BFF),
+                    size: 16.sp,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

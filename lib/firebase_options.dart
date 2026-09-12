@@ -57,6 +57,16 @@ class DefaultFirebaseOptions {
         iosBundleId: 'com.culturecards.app',
       );
 
+
+      // static const FirebaseOptions mac = FirebaseOptions(
+      //   apiKey: '',
+      //   appId: '',
+      //   messagingSenderId: '',
+      //   projectId: '',
+      //   storageBucket: '',
+      //   iosBundleId: 'com.culturecards.app',
+      // );
+
   static const FirebaseOptions web = FirebaseOptions(
     apiKey: 'AIzaSyDummyKeyForLiveStreamApp123456789',
     appId: '1:123456789012:web:abcdef1234567890',

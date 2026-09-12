@@ -12,7 +12,6 @@ import '../../live_stream/controller/agora_live_controller.dart';
 import '../../../../global/widgets/custom_shimmer.dart';
 import '../../../../global/helper/auth_guard.dart';
 import '../../../../data/services/api_url.dart';
-import '../../trade_voting/widgets/trade_vote_card.dart';
 import '../../trade_voting/widgets/tinder_swipeable_trade_voting.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -1634,15 +1633,31 @@ class HomeScreen extends StatelessWidget {
 
                   // Title / Starts in 2h
                   Expanded(
-                    child: Text(
-                      formattedTimeShort,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 12.sp,
-                        fontWeight: FontWeight.w700,
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 11.5.sp,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        Text(
+                          formattedTime,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: Colors.white54,
+                            fontSize: 9.5.sp,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
 

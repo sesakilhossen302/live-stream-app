@@ -42,7 +42,6 @@ class _TinderSwipeableTradeVotingState
   Animation<Offset>? _flyAnimation;
 
   Offset _dragOffset = Offset.zero;
-  bool _isDragging = false;
   bool _isAnimating = false;
 
   // Swipe dismiss threshold in logical pixels
@@ -93,9 +92,6 @@ class _TinderSwipeableTradeVotingState
   void _handlePanStart(DragStartDetails details) {
     if (_isAnimating || widget.trades.length <= 1) return;
     _animController.stop();
-    setState(() {
-      _isDragging = true;
-    });
   }
 
   void _handlePanUpdate(DragUpdateDetails details) {
@@ -107,7 +103,6 @@ class _TinderSwipeableTradeVotingState
 
   void _handlePanEnd(DragEndDetails details) {
     if (_isAnimating || widget.trades.length <= 1) return;
-    _isDragging = false;
 
     final dx = _dragOffset.dx;
     final vx = details.velocity.pixelsPerSecond.dx;
@@ -412,7 +407,8 @@ class _TinderSwipeableTradeVotingState
             ),
           ],
         ),
-      ],
-    );
+      ),
+    ],
+  );
   }
 }

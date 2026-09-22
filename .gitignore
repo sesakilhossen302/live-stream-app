@@ -47,3 +47,5 @@ temp_interactive_push.bat
 
 .gitignore
 public/
+config.bat
+node_modules

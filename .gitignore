@@ -49,3 +49,5 @@ temp_interactive_push.bat
 public/
 config.bat
 node_modules
+ios/build/
+android/build/

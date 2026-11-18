@@ -149,8 +149,13 @@ class MessageDetailsScreen extends GetView<MessageDetailsController> {
                       final bool isMe = msg['isMe'] == true;
                       final bool isRead = msg['isRead'] == true;
                       final String messageText = msg['message'] ?? '';
+                      final Map<String, dynamic>? rawMsg = msg['raw'] is Map
+                          ? Map<String, dynamic>.from(msg['raw'])
+                          : null;
 
-                      if (messageText.contains("Proposed a new trade swap offer:")) {
+                      if (rawMsg?['messageType'] == 'trade_proposal' ||
+                          messageText.contains("Proposed a new trade swap offer:") ||
+                          messageText.contains("Proposed a new cash offer")) {
                         return _buildTradeOfferBubble(msg);
                       }
 
@@ -427,86 +432,183 @@ class MessageDetailsScreen extends GetView<MessageDetailsController> {
     );
   }
 
+  String _extractFirstProductImage(dynamic product) {
+    if (product is! Map) return '';
+    final dynamic imgs = product['images'];
+    if (imgs is List && imgs.isNotEmpty) {
+      for (final entry in imgs) {
+        final s = entry?.toString().trim() ?? '';
+        if (s.isNotEmpty && s != 'null') return s;
+      }
+    } else if (imgs is String && imgs.trim().isNotEmpty && imgs.trim() != 'null') {
+      return imgs.trim();
+    }
+    for (final key in ['image', 'thumbnail', 'coverImage', 'photo']) {
+      final v = product[key]?.toString().trim() ?? '';
+      if (v.isNotEmpty && v != 'null') return v;
+    }
+    return '';
+  }
+
   Widget _buildTradeOfferBubble(Map<String, dynamic> msg) {
     return Obx(() {
       final bool isMe = msg['isMe'] == true;
       final String text = msg['message'] ?? '';
       final String time = msg['time'] ?? 'Now';
 
-      // Parse items
-      final pattern = RegExp(r'Proposed a new trade swap offer:\s*(.*?)\s+for\s+(.*)', caseSensitive: false);
-      final match = pattern.firstMatch(text);
-      
-      String offeredTitle = "Offered Item";
+      // Parse fallback titles from text
+      final swapPattern = RegExp(
+        r'Proposed a new trade swap offer:\s*(.*?)\s+for\s+(.*)',
+        caseSensitive: false,
+      );
+      final cashPattern = RegExp(
+        r'Proposed a new cash offer of\s*\$?([\d.,]+)\s+for\s+(.*)',
+        caseSensitive: false,
+      );
+
+      final swapMatch = swapPattern.firstMatch(text);
+      final cashMatch = cashPattern.firstMatch(text);
+
+      String offeredTitle = cashMatch != null ? "Cash Offer" : "Offered Item";
       String requestedTitle = "Requested Item";
-      if (match != null) {
-        offeredTitle = match.group(1)?.trim() ?? "";
-        requestedTitle = match.group(2)?.trim() ?? "";
-        if (requestedTitle.endsWith('.')) {
-          requestedTitle = requestedTitle.substring(0, requestedTitle.length - 1).trim();
-        }
+      double parsedCashFromText = 0.0;
+
+      if (swapMatch != null) {
+        offeredTitle = swapMatch.group(1)?.trim() ?? "Offered Item";
+        requestedTitle = swapMatch.group(2)?.trim() ?? "Requested Item";
+      } else if (cashMatch != null) {
+        parsedCashFromText =
+            double.tryParse((cashMatch.group(1) ?? '0').replaceAll(',', '')) ?? 0.0;
+        requestedTitle = cashMatch.group(2)?.trim() ?? "Requested Item";
+      }
+      if (requestedTitle.endsWith('.')) {
+        requestedTitle = requestedTitle.substring(0, requestedTitle.length - 1).trim();
       }
 
-      Get.log("🔍 [TradeBubble] Parsed text: '$text'");
-      Get.log("🔍 [TradeBubble] Parsed Offered: '$offeredTitle', Requested: '$requestedTitle'");
-      Get.log("🔍 [TradeBubble] Total trades in memory: ${controller.associatedTrades.length}");
+      // Extract metadata tradeOfferId (can be populated Map from backend OR raw String ID)
+      final Map<String, dynamic>? rawMsg =
+          msg['raw'] is Map ? Map<String, dynamic>.from(msg['raw']) : null;
+      final Map<String, dynamic>? metadata =
+          rawMsg?['metadata'] is Map ? Map<String, dynamic>.from(rawMsg!['metadata']) : null;
+      final dynamic rawTradeRef = metadata?['tradeOfferId'];
 
-      // Look up trade details
+      String metaTradeId = '';
+      Map<String, dynamic>? populatedTradeFromMsg;
+      if (rawTradeRef is Map) {
+        populatedTradeFromMsg = Map<String, dynamic>.from(rawTradeRef);
+        metaTradeId = (populatedTradeFromMsg['_id'] ?? populatedTradeFromMsg['id'] ?? '').toString();
+      } else if (rawTradeRef != null) {
+        metaTradeId = rawTradeRef.toString();
+      }
+
+      // Priority 1: Match by exact tradeOfferId in associatedTrades (always has freshest status!)
       Map<String, dynamic>? tradeDetail;
-      for (var trade in controller.associatedTrades) {
-        final senderProduct = trade['senderProductId'] ?? {};
-        final receiverProduct = trade['receiverProductId'] ?? {};
-
-        final String sTitle = (senderProduct['title'] ?? '').toString().trim();
-        final String rTitle = (receiverProduct['title'] ?? '').toString().trim();
-        
-        Get.log("   - Checking trade: senderProdTitle='$sTitle', receiverProdTitle='$rTitle'");
-
-        if (sTitle.toLowerCase() == offeredTitle.toLowerCase() &&
-            rTitle.toLowerCase() == requestedTitle.toLowerCase()) {
-          tradeDetail = Map<String, dynamic>.from(trade);
-          Get.log("   - Match found! Trade ID: ${tradeDetail['_id']}");
-          break;
+      if (metaTradeId.isNotEmpty) {
+        for (final trade in controller.associatedTrades) {
+          if (trade is Map) {
+            final tid = (trade['_id'] ?? trade['id'] ?? '').toString();
+            if (tid == metaTradeId) {
+              tradeDetail = Map<String, dynamic>.from(trade);
+              break;
+            }
+          }
         }
       }
 
-      // Get image URLs and cash supplement
+      // Priority 2: Use populated trade embedded directly inside message metadata
+      tradeDetail ??= populatedTradeFromMsg;
+
+      // Priority 3: Fallback to title matching in associatedTrades
+      if (tradeDetail == null) {
+        for (final trade in controller.associatedTrades) {
+          if (trade is! Map) continue;
+          final senderProduct = trade['senderProductId'] is Map ? trade['senderProductId'] : null;
+          final receiverProduct = trade['receiverProductId'] is Map ? trade['receiverProductId'] : null;
+
+          final String sTitle = (senderProduct?['title'] ?? '').toString().trim();
+          final String rTitle = (receiverProduct?['title'] ?? '').toString().trim();
+
+          if (swapMatch != null &&
+              sTitle.toLowerCase() == offeredTitle.toLowerCase() &&
+              rTitle.toLowerCase() == requestedTitle.toLowerCase()) {
+            tradeDetail = Map<String, dynamic>.from(trade);
+            break;
+          }
+          if (cashMatch != null &&
+              senderProduct == null &&
+              rTitle.toLowerCase() == requestedTitle.toLowerCase()) {
+            tradeDetail = Map<String, dynamic>.from(trade);
+            break;
+          }
+        }
+      }
+
+      // Extract image URLs, titles, values, and cash supplement
       String offeredImg = "";
       String requestedImg = "";
-      double cash = 0.0;
+      double cash = parsedCashFromText;
       double offeredValue = 0.0;
       double requestedValue = 0.0;
       String status = "pending";
-      String tradeId = "";
+      String tradeId = metaTradeId;
+      bool isCashOnlyOffer = cashMatch != null;
 
       if (tradeDetail != null) {
-        tradeId = tradeDetail['_id']?.toString() ?? "";
-        status = tradeDetail['status']?.toString().toLowerCase() ?? "pending";
-        cash = double.tryParse(tradeDetail['cashSupplement']?.toString() ?? '0') ?? 0.0;
+        tradeId = (tradeDetail['_id'] ?? tradeDetail['id'] ?? metaTradeId).toString();
+        status = (tradeDetail['status'] ?? "pending").toString().toLowerCase();
+        cash = double.tryParse(
+              (tradeDetail['cashSupplement'] ?? tradeDetail['offerAmount'] ?? parsedCashFromText).toString(),
+            ) ??
+            parsedCashFromText;
 
-        final senderProduct = tradeDetail['senderProductId'] ?? {};
-        final receiverProduct = tradeDetail['receiverProductId'] ?? {};
+        final Map<String, dynamic>? senderProduct = tradeDetail['senderProductId'] is Map
+            ? Map<String, dynamic>.from(tradeDetail['senderProductId'])
+            : null;
+        final Map<String, dynamic>? receiverProduct = tradeDetail['receiverProductId'] is Map
+            ? Map<String, dynamic>.from(tradeDetail['receiverProductId'])
+            : null;
 
-        offeredValue = double.tryParse(senderProduct['estValue']?.toString() ?? '0') ?? 0.0;
-        requestedValue = double.tryParse(receiverProduct['estValue']?.toString() ?? '0') ?? 0.0;
+        // Also check embedded populatedTradeFromMsg in case associatedTrades didn't populate a product
+        final Map<String, dynamic>? fallbackSender = populatedTradeFromMsg?['senderProductId'] is Map
+            ? Map<String, dynamic>.from(populatedTradeFromMsg!['senderProductId'])
+            : null;
+        final Map<String, dynamic>? fallbackReceiver = populatedTradeFromMsg?['receiverProductId'] is Map
+            ? Map<String, dynamic>.from(populatedTradeFromMsg!['receiverProductId'])
+            : null;
 
-        final senderImages = senderProduct['images'];
-        if (senderImages != null && senderImages is List && senderImages.isNotEmpty) {
-          offeredImg = senderImages[0].toString();
+        final effectiveSender = senderProduct ?? fallbackSender;
+        final effectiveReceiver = receiverProduct ?? fallbackReceiver;
+
+        isCashOnlyOffer = effectiveSender == null && cash > 0;
+
+        if (effectiveSender != null) {
+          final sTitle = (effectiveSender['title'] ?? '').toString().trim();
+          if (sTitle.isNotEmpty) offeredTitle = sTitle;
+          offeredValue = double.tryParse(
+                (effectiveSender['estValue'] ?? effectiveSender['buyNowPrice'] ?? effectiveSender['price'] ?? '0').toString(),
+              ) ??
+              0.0;
+          offeredImg = _extractFirstProductImage(effectiveSender);
+        } else if (isCashOnlyOffer) {
+          offeredTitle = "\$${cash.toInt()} Cash Offer";
         }
 
-        final receiverImages = receiverProduct['images'];
-        if (receiverImages != null && receiverImages is List && receiverImages.isNotEmpty) {
-          requestedImg = receiverImages[0].toString();
+        if (effectiveReceiver != null) {
+          final rTitle = (effectiveReceiver['title'] ?? '').toString().trim();
+          if (rTitle.isNotEmpty) requestedTitle = rTitle;
+          requestedValue = double.tryParse(
+                (effectiveReceiver['estValue'] ?? effectiveReceiver['buyNowPrice'] ?? effectiveReceiver['price'] ?? '0').toString(),
+              ) ??
+              0.0;
+          requestedImg = _extractFirstProductImage(effectiveReceiver);
         }
       }
 
-      Get.log("🔍 [TradeBubble] Resolved OfferedImg: '$offeredImg'");
-      Get.log("🔍 [TradeBubble] Resolved RequestedImg: '$requestedImg'");
-
       // Color scheme
       final Color cardBg = const Color(0xFF161622);
-      final Color borderColor = const Color(0xFF8B9BFF).withOpacity(0.15);
+      final Color borderColor = isCashOnlyOffer
+          ? const Color(0xFF22C55E).withOpacity(0.22)
+          : const Color(0xFF8B9BFF).withOpacity(0.18);
 
       return Align(
         alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
@@ -543,10 +645,18 @@ class MessageDetailsScreen extends GetView<MessageDetailsController> {
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.swap_horizontal_circle_outlined, color: const Color(0xFF8B9BFF), size: 18.sp),
+                        Icon(
+                          isCashOnlyOffer
+                              ? Icons.payments_outlined
+                              : Icons.swap_horizontal_circle_outlined,
+                          color: isCashOnlyOffer
+                              ? const Color(0xFF22C55E)
+                              : const Color(0xFF8B9BFF),
+                          size: 18.sp,
+                        ),
                         SizedBox(width: 8.w),
                         Text(
-                          "TRADE PROPOSAL",
+                          isCashOnlyOffer ? "CASH OFFER" : "TRADE PROPOSAL",
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 10.sp,
@@ -583,14 +693,14 @@ class MessageDetailsScreen extends GetView<MessageDetailsController> {
                 ),
               ),
 
-              // Main Swap comparison
+              // Main Swap / Cash Comparison
               Padding(
                 padding: EdgeInsets.all(16.r),
                 child: Column(
                   children: [
                     Row(
                       children: [
-                        // Offered Item (Sender)
+                        // Offered Item (or Cash Card for Cash-Only Offer)
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -600,10 +710,45 @@ class MessageDetailsScreen extends GetView<MessageDetailsController> {
                                 style: TextStyle(color: Colors.white38, fontSize: 9.sp, fontWeight: FontWeight.w900, letterSpacing: 0.5),
                               ),
                               SizedBox(height: 8.h),
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(12.r),
-                                child: _buildProductImage(offeredImg, height: 90.h, width: double.infinity),
-                              ),
+                              if (isCashOnlyOffer)
+                                Container(
+                                  height: 90.h,
+                                  width: double.infinity,
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                      colors: [
+                                        const Color(0xFF22C55E).withOpacity(0.22),
+                                        const Color(0xFF10B981).withOpacity(0.08),
+                                      ],
+                                    ),
+                                    borderRadius: BorderRadius.circular(12.r),
+                                    border: Border.all(
+                                      color: const Color(0xFF22C55E).withOpacity(0.35),
+                                    ),
+                                  ),
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.payments_rounded, color: const Color(0xFF34D399), size: 24.sp),
+                                      SizedBox(height: 4.h),
+                                      Text(
+                                        "\$${cash.toInt()}",
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 18.sp,
+                                          fontWeight: FontWeight.w900,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                )
+                              else
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(12.r),
+                                  child: _buildProductImage(offeredImg, height: 90.h, width: double.infinity),
+                                ),
                               SizedBox(height: 8.h),
                               Text(
                                 offeredTitle,
@@ -611,7 +756,7 @@ class MessageDetailsScreen extends GetView<MessageDetailsController> {
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
-                              if (offeredValue > 0) ...[
+                              if (!isCashOnlyOffer && offeredValue > 0) ...[
                                 SizedBox(height: 2.h),
                                 Text(
                                   "Est. \$${offeredValue.toInt()}",
@@ -632,7 +777,11 @@ class MessageDetailsScreen extends GetView<MessageDetailsController> {
                               shape: BoxShape.circle,
                               border: Border.all(color: Colors.white.withOpacity(0.05)),
                             ),
-                            child: Icon(Icons.sync_alt_rounded, color: const Color(0xFF8B9BFF), size: 16.sp),
+                            child: Icon(
+                              isCashOnlyOffer ? Icons.arrow_forward_rounded : Icons.sync_alt_rounded,
+                              color: isCashOnlyOffer ? const Color(0xFF22C55E) : const Color(0xFF8B9BFF),
+                              size: 16.sp,
+                            ),
                           ),
                         ),
 
@@ -670,8 +819,8 @@ class MessageDetailsScreen extends GetView<MessageDetailsController> {
                       ],
                     ),
 
-                    // Cash supplement if > 0
-                    if (cash > 0) ...[
+                    // Cash supplement if > 0 (only for swap + cash sweetener, not pure cash offer)
+                    if (!isCashOnlyOffer && cash > 0) ...[
                       SizedBox(height: 16.h),
                       Container(
                         padding: EdgeInsets.all(12.r),
@@ -684,14 +833,18 @@ class MessageDetailsScreen extends GetView<MessageDetailsController> {
                           children: [
                             Icon(Icons.add_card_rounded, color: const Color(0xFF8B9BFF), size: 16.sp),
                             SizedBox(width: 8.w),
-                            Text(
-                              isMe 
-                                  ? "+ \$${cash.toInt()} Cash Supplement Offered" 
-                                  : "+ \$${cash.toInt()} Cash Supplement Included",
-                              style: TextStyle(
-                                color: const Color(0xFF8B9BFF),
-                                fontSize: 11.sp,
-                                fontWeight: FontWeight.w800,
+                            Flexible(
+                              child: Text(
+                                isMe
+                                    ? "+ \$${cash.toInt()} Cash Supplement Offered"
+                                    : "+ \$${cash.toInt()} Cash Supplement Included",
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: const Color(0xFF8B9BFF),
+                                  fontSize: 11.sp,
+                                  fontWeight: FontWeight.w800,
+                                ),
                               ),
                             ),
                           ],
@@ -880,23 +1033,24 @@ class MessageDetailsScreen extends GetView<MessageDetailsController> {
   }
 
   Widget _buildProductImage(String imgStr, {double? height, double? width, BoxFit fit = BoxFit.cover}) {
-    if (imgStr.isEmpty) {
+    final trimmed = imgStr.trim();
+    if (trimmed.isEmpty || trimmed == 'null') {
       return Container(
         height: height,
         width: width,
         color: Colors.black26,
-        child: const Center(child: Icon(Icons.image, color: Colors.white24)),
+        child: const Center(child: Icon(Icons.inventory_2_outlined, color: Colors.white24)),
       );
     }
-    if (imgStr.startsWith('data:image/') && imgStr.contains('base64,')) {
+    if (trimmed.startsWith('data:image/') && trimmed.contains('base64,')) {
       try {
-        final bytes = base64Decode(imgStr.split('base64,').last);
+        final bytes = base64Decode(trimmed.split('base64,').last.trim());
         return Image.memory(
           bytes,
           height: height,
           width: width,
           fit: fit,
-          errorBuilder: (_, __, ___) => Container(
+          errorBuilder: (_, _, _) => Container(
             height: height,
             width: width,
             color: Colors.black26,
@@ -912,13 +1066,30 @@ class MessageDetailsScreen extends GetView<MessageDetailsController> {
         );
       }
     }
-    final cleanUrl = imgStr.startsWith('http') ? imgStr : "${ApiUrl.imageBaseUrl}${imgStr.startsWith('/') ? imgStr : '/$imgStr'}";
+    final cleanUrl = (trimmed.startsWith('http://') || trimmed.startsWith('https://'))
+        ? trimmed
+        : "${ApiUrl.imageBaseUrl}${trimmed.startsWith('/') ? trimmed : '/$trimmed'}";
     return Image.network(
       cleanUrl,
       height: height,
       width: width,
       fit: fit,
-      errorBuilder: (_, __, ___) => Container(
+      loadingBuilder: (context, child, loadingProgress) {
+        if (loadingProgress == null) return child;
+        return Container(
+          height: height,
+          width: width,
+          color: Colors.black26,
+          child: const Center(
+            child: SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF8B9BFF)),
+            ),
+          ),
+        );
+      },
+      errorBuilder: (_, _, _) => Container(
         height: height,
         width: width,
         color: Colors.black26,

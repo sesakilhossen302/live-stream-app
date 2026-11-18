@@ -291,6 +291,11 @@ class MessageDetailsController extends GetxController {
         'isRead': msgMap['isRead'] == true,
         'raw': msgMap,
       });
+      if (msgMap['messageType'] == 'trade_proposal' ||
+          text.contains('Proposed a new trade') ||
+          text.contains('Proposed a new cash offer')) {
+        fetchAssociatedTrades();
+      }
       markAsSeen();
       _scrollToBottom();
     } catch (e) {
@@ -559,11 +564,11 @@ class MessageDetailsController extends GetxController {
   // ─── TRADE OPERATIONS ────────────────────────────────────────────────────────
   Future<void> fetchAssociatedTrades() async {
     final userId = SharePrefsHelper.getString(SharePrefsHelper.userIdKey);
-    if (userId.isEmpty) return;
+    final String userParam = userId.isNotEmpty ? "userId=$userId&" : "";
 
     try {
-      final receivedResponse = await _apiClient.getData("${ApiUrl.tradeOffers}?userId=$userId&type=received");
-      final sentResponse = await _apiClient.getData("${ApiUrl.tradeOffers}?userId=$userId&type=sent");
+      final receivedResponse = await _apiClient.getData("${ApiUrl.tradeOffers}?${userParam}type=received");
+      final sentResponse = await _apiClient.getData("${ApiUrl.tradeOffers}?${userParam}type=sent");
 
       List receivedData = [];
       List sentData = [];
